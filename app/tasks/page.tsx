@@ -39,6 +39,7 @@ export default function TasksPage() {
     total: 0,
     totalPages: 0,
   });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -47,40 +48,38 @@ export default function TasksPage() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    if (user) {
-      fetchTasks();
-    }
-  }, [user, pagination.page, doneFilter]);
+    if (!user) return;
 
-  const fetchTasks = async (pageOverride?: number) => {
-    try {
-      const params = new URLSearchParams({
-        page: (pageOverride ?? pagination.page).toString(),
-        limit: pagination.limit.toString(),
-      });
+    (async () => {
+      try {
+        const params = new URLSearchParams({
+          page: pagination.page.toString(),
+          limit: pagination.limit.toString(),
+        });
 
-      if (doneFilter) params.append("done", doneFilter);
-      if (searchQuery) params.append("search", searchQuery);
+        if (doneFilter) params.append("done", doneFilter);
+        if (searchQuery) params.append("search", searchQuery);
 
-      const response = await fetch(`/api/tasks?${params.toString()}`);
-      if (response.ok) {
-        const data: TaskListResponse = await response.json();
-        setTasks(data.tasks);
-        setPagination(data.pagination);
+        const response = await fetch(`/api/tasks?${params.toString()}`);
+        if (response.ok) {
+          const data: TaskListResponse = await response.json();
+          setTasks(data.tasks);
+          setPagination(data.pagination);
+        }
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching tasks:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    })();
+  }, [user, pagination.page, doneFilter, refreshKey]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (pagination.page !== 1) {
       setPagination({ ...pagination, page: 1 });
     } else {
-      fetchTasks(1);
+      setRefreshKey((key) => key + 1);
     }
   };
 

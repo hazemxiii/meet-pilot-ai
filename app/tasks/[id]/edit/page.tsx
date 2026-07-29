@@ -23,35 +23,33 @@ export default function EditTaskPage({
   }, [user, loading, router]);
 
   useEffect(() => {
-    if (user) {
-      fetchTask();
-    }
-  }, [user, id]);
+    if (!user) return;
 
-  const fetchTask = async () => {
-    try {
-      const response = await fetch(`/api/tasks/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        const task = data.task;
-        setInitialValues({
-          title: task.title,
-          details: task.details || "",
-          done: task.done,
-          deadline: task.deadline || "",
-        });
-      } else {
+    (async () => {
+      try {
+        const response = await fetch(`/api/tasks/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+          const task = data.task;
+          setInitialValues({
+            title: task.title,
+            details: task.details || "",
+            done: task.done,
+            deadline: task.deadline || "",
+          });
+        } else {
+          alert("Failed to load task");
+          router.push("/tasks");
+        }
+      } catch (error) {
+        console.error("Error fetching task:", error);
         alert("Failed to load task");
         router.push("/tasks");
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching task:", error);
-      alert("Failed to load task");
-      router.push("/tasks");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    })();
+  }, [user, id, router]);
 
   const handleUpdate = async (formData: TaskFormValues) => {
     try {

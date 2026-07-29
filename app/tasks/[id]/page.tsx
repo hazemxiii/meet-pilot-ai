@@ -41,30 +41,28 @@ export default function TaskDetailPage({
   }, [user, loading, router]);
 
   useEffect(() => {
-    if (user) {
-      fetchTaskDetails();
-    }
-  }, [user, id]);
+    if (!user) return;
 
-  const fetchTaskDetails = async () => {
-    try {
-      const response = await fetch(`/api/tasks/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setTask(data.task);
-        setFiles(data.files || []);
-      } else {
+    (async () => {
+      try {
+        const response = await fetch(`/api/tasks/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setTask(data.task);
+          setFiles(data.files || []);
+        } else {
+          alert("Failed to load task");
+          router.push("/tasks");
+        }
+      } catch (error) {
+        console.error("Error fetching task details:", error);
         alert("Failed to load task");
         router.push("/tasks");
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching task details:", error);
-      alert("Failed to load task");
-      router.push("/tasks");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    })();
+  }, [user, id, router]);
 
   if (loading || isLoading) {
     return (

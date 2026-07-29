@@ -46,7 +46,7 @@ export async function GET(
       task,
       files: files || [],
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -76,7 +76,7 @@ export async function PUT(
     const body = await request.json();
     const { title, details, done, deadline } = body;
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (title !== undefined) updateData.title = title.trim();
     if (details !== undefined) updateData.details = details?.trim() ?? "";
     if (done !== undefined) updateData.done = done;
@@ -99,7 +99,7 @@ export async function PUT(
     }
 
     return NextResponse.json(task);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -137,7 +137,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

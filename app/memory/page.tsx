@@ -26,24 +26,22 @@ export default function MemoryPage() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    if (user) {
-      fetchMemoryItems();
-    }
-  }, [user]);
+    if (!user) return;
 
-  const fetchMemoryItems = async () => {
-    try {
-      const response = await fetch("/api/memory");
-      if (response.ok) {
-        const data = await response.json();
-        setMemoryItems(data);
+    (async () => {
+      try {
+        const response = await fetch("/api/memory");
+        if (response.ok) {
+          const data = await response.json();
+          setMemoryItems(data);
+        }
+      } catch (error) {
+        console.error("Error fetching memory items:", error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching memory items:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    })();
+  }, [user]);
 
   const addMemoryItem = async (e: React.FormEvent) => {
     e.preventDefault();
