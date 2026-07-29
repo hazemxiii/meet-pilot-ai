@@ -48,7 +48,7 @@ export default function TaskForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Title */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-label-md text-on-surface mb-2">
           Title *
         </label>
         <input
@@ -56,21 +56,23 @@ export default function TaskForm({
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           required
-          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full p-3 bg-surface border border-outline-variant rounded-xl focus:ring-2 focus:ring-secondary focus:border-transparent text-on-surface placeholder:text-on-surface-variant"
           placeholder="Enter task title"
         />
       </div>
 
       {/* Details */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-label-md text-on-surface mb-2">
           Details
         </label>
         <textarea
           value={formData.details}
-          onChange={(e) => setFormData({ ...formData, details: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, details: e.target.value })
+          }
           rows={4}
-          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          className="w-full p-3 bg-surface border border-outline-variant rounded-xl focus:ring-2 focus:ring-secondary focus:border-transparent resize-none text-on-surface placeholder:text-on-surface-variant"
           placeholder="Enter task details"
         />
       </div>
@@ -78,14 +80,16 @@ export default function TaskForm({
       {/* Deadline and Done */}
       <div className="grid md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-label-md text-on-surface mb-2">
             Deadline
           </label>
           <input
             type="datetime-local"
             value={formData.deadline}
-            onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            onChange={(e) =>
+              setFormData({ ...formData, deadline: e.target.value })
+            }
+            className="w-full p-3 bg-surface border border-outline-variant rounded-xl focus:ring-2 focus:ring-secondary focus:border-transparent text-on-surface"
           />
         </div>
         <div className="flex items-end pb-3">
@@ -93,10 +97,12 @@ export default function TaskForm({
             <input
               type="checkbox"
               checked={formData.done}
-              onChange={(e) => setFormData({ ...formData, done: e.target.checked })}
-              className="w-4 h-4 text-blue-600 rounded"
+              onChange={(e) =>
+                setFormData({ ...formData, done: e.target.checked })
+              }
+              className="w-5 h-5 rounded border-outline-variant text-secondary focus:ring-secondary"
             />
-            <span className="text-sm font-medium text-gray-700">Done</span>
+            <span className="text-sm font-label-md text-on-surface">Done</span>
           </label>
         </div>
       </div>
@@ -106,14 +112,14 @@ export default function TaskForm({
         <button
           type="button"
           onClick={onCancel}
-          className="bg-gray-600 text-white py-2 px-6 rounded-lg hover:bg-gray-700 transition-colors"
+          className="bg-surface-container-high text-on-surface-variant py-2 px-6 rounded-xl hover:bg-surface-container-highest transition-colors font-label-md text-label-md"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={isSubmitting || !formData.title.trim()}
-          className="bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="bg-primary text-on-primary py-2 px-6 rounded-xl hover:bg-primary/90 transition-colors disabled:bg-surface-container-high disabled:cursor-not-allowed font-label-md text-label-md"
         >
           {isSubmitting ? submittingLabel : submitLabel}
         </button>
