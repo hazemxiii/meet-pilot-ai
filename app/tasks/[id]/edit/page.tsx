@@ -36,15 +36,9 @@ export default function EditTaskPage({
         const task = data.task;
         setInitialValues({
           title: task.title,
-          description: task.description || "",
-          status: task.status,
-          priority: task.priority,
-          assignees: task.assignees || [],
-          start_date: task.start_date || "",
-          due_date: task.due_date || "",
-          time_estimate: task.time_estimate?.toString() || "",
-          sprint_points: task.sprint_points?.toString() || "",
-          tags: task.tags || [],
+          details: task.details || "",
+          done: task.done,
+          deadline: task.deadline || "",
         });
       } else {
         alert("Failed to load task");
@@ -64,11 +58,7 @@ export default function EditTaskPage({
       const response = await fetch(`/api/tasks/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          time_estimate: formData.time_estimate ? parseInt(formData.time_estimate) : null,
-          sprint_points: formData.sprint_points ? parseInt(formData.sprint_points) : null,
-        }),
+        body: JSON.stringify(formData),
       });
 
       if (response.ok) {

@@ -18,9 +18,7 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status");
-    const priority = searchParams.get("priority");
-    const tag = searchParams.get("tag");
+    const done = searchParams.get("done");
     const search = searchParams.get("search");
     const sortBy = searchParams.get("sortBy") || "created_at";
     const sortOrder = searchParams.get("sortOrder") || "desc";
@@ -33,18 +31,12 @@ export async function GET(request: Request) {
       .eq("user_id", user.id);
 
     // Apply filters
-    if (status) {
-      query = query.eq("status", status);
-    }
-    if (priority) {
-      query = query.eq("priority", priority);
-    }
-    if (tag) {
-      query = query.contains("tags", [tag]);
+    if (done !== null) {
+      query = query.eq("done", done === "true");
     }
     if (search) {
       const safeSearch = search.replace(/[%_,()]/g, "");
-      query = query.or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
+      query = query.or(`title.ilike.%${safeSearch}%,details.ilike.%${safeSearch}%`);
     }
 
     // Apply sorting
@@ -94,18 +86,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const {
-      title,
-      description,
-      status = "todo",
-      priority = "medium",
-      assignees = [],
-      start_date,
-      due_date,
-      time_estimate,
-      sprint_points,
-      tags = [],
-    } = body;
+    const { title, details = "", done = false, deadline } = body;
 
     if (!title || typeof title !== "string") {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -116,15 +97,9 @@ export async function POST(request: Request) {
       .insert({
         user_id: user.id,
         title: title.trim(),
-        description: description?.trim(),
-        status,
-        priority,
-        assignees,
-        start_date,
-        due_date,
-        time_estimate,
-        sprint_points,
-        tags,
+        details: details?.trim() ?? "",
+        done,
+        deadline: deadline || null,
       })
       .select()
       .single();

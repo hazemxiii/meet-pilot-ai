@@ -3,17 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { getStatusColor, getPriorityColor } from "@/utils/tasks/colors";
+import { getDoneColor } from "@/utils/tasks/colors";
 
 interface Task {
   id: string;
   title: string;
-  description: string | null;
-  status: string;
-  priority: string;
-  start_date: string | null;
-  due_date: string | null;
-  tags: string[];
+  details: string;
+  done: boolean;
+  deadline: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -34,8 +31,7 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState("");
+  const [doneFilter, setDoneFilter] = useState("");
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -54,7 +50,7 @@ export default function TasksPage() {
     if (user) {
       fetchTasks();
     }
-  }, [user, pagination.page, statusFilter, priorityFilter]);
+  }, [user, pagination.page, doneFilter]);
 
   const fetchTasks = async (pageOverride?: number) => {
     try {
@@ -63,8 +59,7 @@ export default function TasksPage() {
         limit: pagination.limit.toString(),
       });
 
-      if (statusFilter) params.append("status", statusFilter);
-      if (priorityFilter) params.append("priority", priorityFilter);
+      if (doneFilter) params.append("done", doneFilter);
       if (searchQuery) params.append("search", searchQuery);
 
       const response = await fetch(`/api/tasks?${params.toString()}`);
@@ -86,6 +81,23 @@ export default function TasksPage() {
       setPagination({ ...pagination, page: 1 });
     } else {
       fetchTasks(1);
+    }
+  };
+
+  const handleToggleDone = async (task: Task) => {
+    try {
+      const response = await fetch(`/api/tasks/${task.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ done: !task.done }),
+      });
+
+      if (response.ok) {
+        const updated = await response.json();
+        setTasks(tasks.map((t) => (t.id === task.id ? updated : t)));
+      }
+    } catch (error) {
+      console.error("Error updating task:", error);
     }
   };
 
@@ -174,7 +186,7 @@ export default function TasksPage() {
 
         {/* Filters and Search */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 mb-6">
-          <div className="grid md:grid-cols-4 gap-4">
+          <div className="grid md:grid-cols-3 gap-4">
             <form onSubmit={handleSearch} className="md:col-span-2">
               <input
                 type="text"
@@ -185,27 +197,13 @@ export default function TasksPage() {
               />
             </form>
             <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              value={doneFilter}
+              onChange={(e) => setDoneFilter(e.target.value)}
               className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Statuses</option>
-              <option value="todo">To Do</option>
-              <option value="in_progress">In Progress</option>
-              <option value="review">Review</option>
-              <option value="done">Done</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">All Priorities</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
+              <option value="">All Tasks</option>
+              <option value="false">Not Done</option>
+              <option value="true">Done</option>
             </select>
           </div>
         </div>
@@ -259,10 +257,9 @@ export default function TasksPage() {
                   className="w-4 h-4 text-blue-600 rounded"
                 />
                 <div className="flex-1 grid grid-cols-12 gap-4 text-sm font-medium text-gray-600">
-                  <div className="col-span-4">Title</div>
+                  <div className="col-span-6">Title</div>
                   <div className="col-span-2">Status</div>
-                  <div className="col-span-2">Priority</div>
-                  <div className="col-span-2">Due Date</div>
+                  <div className="col-span-2">Deadline</div>
                   <div className="col-span-2">Actions</div>
                 </div>
               </div>
@@ -278,53 +275,33 @@ export default function TasksPage() {
                     className="w-4 h-4 text-blue-600 rounded"
                   />
                   <div className="flex-1 grid grid-cols-12 gap-4 items-center">
-                    <div className="col-span-4">
+                    <div className="col-span-6">
                       <div
                         className="font-medium text-gray-900 cursor-pointer hover:text-blue-600"
                         onClick={() => router.push(`/tasks/${task.id}`)}
                       >
                         {task.title}
                       </div>
-                      {task.description && (
+                      {task.details && (
                         <div className="text-sm text-gray-500 truncate">
-                          {task.description}
-                        </div>
-                      )}
-                      {task.tags.length > 0 && (
-                        <div className="flex gap-2 mt-1">
-                          {task.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded"
-                            >
-                              {tag}
-                            </span>
-                          ))}
+                          {task.details}
                         </div>
                       )}
                     </div>
                     <div className="col-span-2">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          task.status
+                      <button
+                        onClick={() => handleToggleDone(task)}
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${getDoneColor(
+                          task.done
                         )}`}
                       >
-                        {task.status.replace("_", " ")}
-                      </span>
-                    </div>
-                    <div className="col-span-2">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
-                          task.priority
-                        )}`}
-                      >
-                        {task.priority}
-                      </span>
+                        {task.done ? "Done" : "Not done"}
+                      </button>
                     </div>
                     <div className="col-span-2 text-sm text-gray-600">
-                      {task.due_date
-                        ? new Date(task.due_date).toLocaleDateString()
-                        : "No due date"}
+                      {task.deadline
+                        ? new Date(task.deadline).toLocaleDateString()
+                        : "No deadline"}
                     </div>
                     <div className="col-span-2 flex gap-2">
                       <button

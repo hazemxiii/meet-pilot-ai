@@ -41,15 +41,9 @@ export async function POST(request: Request) {
     const tasksToInsert = tasks.map((task) => ({
       user_id: user.id,
       title: task.title.trim(),
-      description: task.description?.trim(),
-      status: task.status || "todo",
-      priority: task.priority || "medium",
-      assignees: task.assignees || [],
-      start_date: task.start_date,
-      due_date: task.due_date,
-      time_estimate: task.time_estimate,
-      sprint_points: task.sprint_points,
-      tags: task.tags || [],
+      details: task.details?.trim() ?? "",
+      done: task.done ?? false,
+      deadline: task.deadline || null,
     }));
 
     const { data: createdTasks, error } = await supabase
@@ -148,18 +142,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const allowedFields = [
-      "title",
-      "description",
-      "status",
-      "priority",
-      "assignees",
-      "start_date",
-      "due_date",
-      "time_estimate",
-      "sprint_points",
-      "tags",
-    ] as const;
+    const allowedFields = ["title", "details", "done", "deadline"] as const;
 
     const safeUpdates: Record<string, unknown> = {};
     for (const field of allowedFields) {

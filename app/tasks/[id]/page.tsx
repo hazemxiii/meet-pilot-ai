@@ -3,56 +3,23 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { getStatusColor, getPriorityColor } from "@/utils/tasks/colors";
+import { getDoneColor } from "@/utils/tasks/colors";
 
 interface Task {
   id: string;
   title: string;
-  description: string | null;
-  status: string;
-  priority: string;
-  assignees: string[];
-  start_date: string | null;
-  due_date: string | null;
-  time_estimate: number | null;
-  sprint_points: number | null;
-  tags: string[];
+  details: string;
+  done: boolean;
+  deadline: string | null;
   created_at: string;
   updated_at: string;
 }
 
-interface Subtask {
+interface TaskFile {
   id: string;
-  title: string;
-  completed: boolean;
-  order_index: number;
-}
-
-interface Checklist {
-  id: string;
-  title: string;
-  checklist_items: ChecklistItem[];
-}
-
-interface ChecklistItem {
-  id: string;
-  text: string;
-  completed: boolean;
-  order_index: number;
-}
-
-interface TaskDependency {
-  id: string;
-  blocking_task: Task;
-}
-
-interface TaskAttachment {
-  id: string;
-  file_name: string;
-  file_url: string;
-  file_size: number;
-  file_type: string;
-  uploaded_at: string;
+  mime_type: string;
+  file_path: string;
+  created_at: string;
 }
 
 export default function TaskDetailPage({
@@ -65,10 +32,7 @@ export default function TaskDetailPage({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [task, setTask] = useState<Task | null>(null);
-  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
-  const [checklists, setChecklists] = useState<Checklist[]>([]);
-  const [dependencies, setDependencies] = useState<TaskDependency[]>([]);
-  const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
+  const [files, setFiles] = useState<TaskFile[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -88,10 +52,7 @@ export default function TaskDetailPage({
       if (response.ok) {
         const data = await response.json();
         setTask(data.task);
-        setSubtasks(data.subtasks || []);
-        setChecklists(data.checklists || []);
-        setDependencies(data.dependencies || []);
-        setAttachments(data.attachments || []);
+        setFiles(data.files || []);
       } else {
         alert("Failed to load task");
         router.push("/tasks");
@@ -163,89 +124,22 @@ export default function TaskDetailPage({
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Description */}
-            {task.description && (
+            {/* Details */}
+            {task.details && (
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Description</h2>
-                <p className="text-gray-700 whitespace-pre-wrap">{task.description}</p>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Details</h2>
+                <p className="text-gray-700 whitespace-pre-wrap">{task.details}</p>
               </div>
             )}
 
-            {/* Subtasks */}
-            {subtasks.length > 0 && (
+            {/* Files */}
+            {files.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                  Subtasks ({subtasks.filter((s) => s.completed).length}/{subtasks.length})
-                </h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Files</h2>
                 <div className="space-y-2">
-                  {subtasks.map((subtask) => (
+                  {files.map((file) => (
                     <div
-                      key={subtask.id}
-                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={subtask.completed}
-                        className="w-4 h-4 text-blue-600 rounded"
-                        readOnly
-                      />
-                      <span
-                        className={`flex-1 ${
-                          subtask.completed ? "text-gray-500 line-through" : "text-gray-900"
-                        }`}
-                      >
-                        {subtask.title}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Checklists */}
-            {checklists.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Checklists</h2>
-                <div className="space-y-4">
-                  {checklists.map((checklist) => (
-                    <div key={checklist.id}>
-                      <h3 className="font-medium text-gray-900 mb-2">{checklist.title}</h3>
-                      <div className="space-y-2">
-                        {checklist.checklist_items.map((item) => (
-                          <div
-                            key={item.id}
-                            className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={item.completed}
-                              className="w-4 h-4 text-blue-600 rounded"
-                              readOnly
-                            />
-                            <span
-                              className={`flex-1 ${
-                                item.completed ? "text-gray-500 line-through" : "text-gray-900"
-                              }`}
-                            >
-                              {item.text}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Attachments */}
-            {attachments.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Attachments</h2>
-                <div className="space-y-2">
-                  {attachments.map((attachment) => (
-                    <div
-                      key={attachment.id}
+                      key={file.id}
                       className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
                     >
                       <svg
@@ -262,19 +156,9 @@ export default function TaskDetailPage({
                         />
                       </svg>
                       <div className="flex-1">
-                        <div className="text-gray-900">{attachment.file_name}</div>
-                        <div className="text-sm text-gray-500">
-                          {attachment.file_size && `${(attachment.file_size / 1024).toFixed(1)} KB`}
-                        </div>
+                        <div className="text-gray-900">{file.file_path}</div>
+                        <div className="text-sm text-gray-500">{file.mime_type}</div>
                       </div>
-                      <a
-                        href={attachment.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        Download
-                      </a>
                     </div>
                   ))}
                 </div>
@@ -288,133 +172,23 @@ export default function TaskDetailPage({
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Status</h2>
               <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                  task.status
+                className={`px-3 py-1 rounded-full text-sm font-medium ${getDoneColor(
+                  task.done
                 )}`}
               >
-                {task.status.replace("_", " ")}
+                {task.done ? "Done" : "Not done"}
               </span>
             </div>
 
-            {/* Priority */}
+            {/* Deadline */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Priority</h2>
-              <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(
-                  task.priority
-                )}`}
-              >
-                {task.priority}
-              </span>
-            </div>
-
-            {/* Dates */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Dates</h2>
-              <div className="space-y-3">
-                <div>
-                  <div className="text-sm text-gray-600">Start Date</div>
-                  <div className="text-gray-900">
-                    {task.start_date
-                      ? new Date(task.start_date).toLocaleString()
-                      : "Not set"}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-600">Due Date</div>
-                  <div className="text-gray-900">
-                    {task.due_date
-                      ? new Date(task.due_date).toLocaleString()
-                      : "Not set"}
-                  </div>
-                </div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Deadline</h2>
+              <div className="text-gray-900">
+                {task.deadline
+                  ? new Date(task.deadline).toLocaleString()
+                  : "Not set"}
               </div>
             </div>
-
-            {/* Time Tracking */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Time Tracking</h2>
-              <div className="space-y-3">
-                <div>
-                  <div className="text-sm text-gray-600">Time Estimate</div>
-                  <div className="text-gray-900">
-                    {task.time_estimate
-                      ? `${task.time_estimate} minutes`
-                      : "Not set"}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-600">Sprint Points</div>
-                  <div className="text-gray-900">
-                    {task.sprint_points || "Not set"}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Assignees */}
-            {task.assignees.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Assignees</h2>
-                <div className="space-y-2">
-                  {task.assignees.map((assignee) => (
-                    <div
-                      key={assignee}
-                      className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg"
-                    >
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-600 font-medium text-sm">
-                          {assignee.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <span className="text-gray-900">{assignee}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Tags */}
-            {task.tags.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Tags</h2>
-                <div className="flex flex-wrap gap-2">
-                  {task.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Dependencies */}
-            {dependencies.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                  Blocked By ({dependencies.length})
-                </h2>
-                <div className="space-y-2">
-                  {dependencies.map((dep) => (
-                    <div
-                      key={dep.id}
-                      className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                      onClick={() => router.push(`/tasks/${dep.blocking_task.id}`)}
-                    >
-                      <div className="text-gray-900 font-medium">
-                        {dep.blocking_task.title}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {dep.blocking_task.status}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-// GET /api/tasks/[id] - Get a single task with related data
+// GET /api/tasks/[id] - Get a single task with attached files
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -36,34 +36,15 @@ export async function GET(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    // Fetch related data
-    const [subtasks, checklists, dependencies, attachments] = await Promise.all([
-      supabase
-        .from("subtasks")
-        .select("*")
-        .eq("task_id", id)
-        .order("order_index", { ascending: true }),
-      supabase
-        .from("checklists")
-        .select("*, checklist_items(*)")
-        .eq("task_id", id),
-      supabase
-        .from("task_dependencies")
-        .select("*, blocking_task:tasks!task_dependencies_blocking_task_id_fkey(*)")
-        .eq("task_id", id),
-      supabase
-        .from("task_attachments")
-        .select("*")
-        .eq("task_id", id)
-        .order("uploaded_at", { ascending: false }),
-    ]);
+    const { data: files } = await supabase
+      .from("files")
+      .select("*")
+      .eq("task_id", id)
+      .order("created_at", { ascending: false });
 
     return NextResponse.json({
       task,
-      subtasks: subtasks.data || [],
-      checklists: checklists.data || [],
-      dependencies: dependencies.data || [],
-      attachments: attachments.data || [],
+      files: files || [],
     });
   } catch (error) {
     return NextResponse.json(
@@ -93,30 +74,13 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const {
-      title,
-      description,
-      status,
-      priority,
-      assignees,
-      start_date,
-      due_date,
-      time_estimate,
-      sprint_points,
-      tags,
-    } = body;
+    const { title, details, done, deadline } = body;
 
     const updateData: any = {};
     if (title !== undefined) updateData.title = title.trim();
-    if (description !== undefined) updateData.description = description?.trim();
-    if (status !== undefined) updateData.status = status;
-    if (priority !== undefined) updateData.priority = priority;
-    if (assignees !== undefined) updateData.assignees = assignees;
-    if (start_date !== undefined) updateData.start_date = start_date;
-    if (due_date !== undefined) updateData.due_date = due_date;
-    if (time_estimate !== undefined) updateData.time_estimate = time_estimate;
-    if (sprint_points !== undefined) updateData.sprint_points = sprint_points;
-    if (tags !== undefined) updateData.tags = tags;
+    if (details !== undefined) updateData.details = details?.trim() ?? "";
+    if (done !== undefined) updateData.done = done;
+    if (deadline !== undefined) updateData.deadline = deadline || null;
 
     const { data: task, error } = await supabase
       .from("tasks")

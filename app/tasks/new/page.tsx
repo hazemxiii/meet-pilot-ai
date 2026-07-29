@@ -20,11 +20,7 @@ export default function NewTaskPage() {
       const response = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          time_estimate: formData.time_estimate ? parseInt(formData.time_estimate) : null,
-          sprint_points: formData.sprint_points ? parseInt(formData.sprint_points) : null,
-        }),
+        body: JSON.stringify(formData),
       });
 
       if (response.ok) {
