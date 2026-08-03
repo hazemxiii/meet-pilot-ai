@@ -30,7 +30,7 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -52,7 +52,10 @@ export async function POST(request: Request) {
     const { content } = await request.json();
 
     if (!content || typeof content !== "string") {
-      return NextResponse.json({ error: "Content is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Content is required" },
+        { status: 400 },
+      );
     }
 
     const { data: memoryItem, error } = await supabase
@@ -72,7 +75,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -93,11 +96,29 @@ export async function DELETE(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    const ids = searchParams.get("ids");
+
+    if (ids) {
+      // Bulk delete
+      const idArray = ids.split(",");
+      const { error } = await supabase
+        .from("memory_items")
+        .delete()
+        .in("id", idArray)
+        .eq("user_id", user.id);
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true });
+    }
 
     if (!id) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
     }
 
+    // Single delete
     const { error } = await supabase
       .from("memory_items")
       .delete()
@@ -112,7 +133,7 @@ export async function DELETE(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

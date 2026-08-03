@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import ProfileHeader from "@/components/ProfileHeader";
+import FloatingSelectionButton from "@/components/FloatingSelectionButton";
 
 interface MemoryItem {
   id: string;
@@ -18,6 +20,7 @@ export default function MemoryPage() {
   const [newContent, setNewContent] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -83,6 +86,50 @@ export default function MemoryPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedItems.length === 0) return;
+    if (
+      !confirm(
+        `Are you sure you want to delete ${selectedItems.length} memory items?`,
+      )
+    )
+      return;
+
+    try {
+      const response = await fetch(
+        `/api/memory?ids=${selectedItems.join(",")}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (response.ok) {
+        setMemoryItems(
+          memoryItems.filter((item) => !selectedItems.includes(item.id)),
+        );
+        setSelectedItems([]);
+      }
+    } catch (error) {
+      console.error("Error bulk deleting memory items:", error);
+    }
+  };
+
+  const handleSelectItem = (id: string) => {
+    setSelectedItems(
+      selectedItems.includes(id)
+        ? selectedItems.filter((itemId) => itemId !== id)
+        : [...selectedItems, id],
+    );
+  };
+
+  const handleSelectAll = () => {
+    setSelectedItems(
+      selectedItems.length === memoryItems.length
+        ? []
+        : memoryItems.map((item) => item.id),
+    );
+  };
+
   if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -107,7 +154,7 @@ export default function MemoryPage() {
 
           <div className="relative z-10 flex flex-col gap-[48px] pb-[48px]">
             {/* Top Section: Profile Hero */}
-            <section className="grid grid-cols-12 gap-[24px] items-end mt-[48px] transition-all duration-700 opacity-100 translate-y-0">
+            {/* <section className="grid grid-cols-12 gap-[24px] items-end mt-[48px] transition-all duration-700 opacity-100 translate-y-0">
               <div className="col-span-12 lg:col-span-8 flex flex-col md:flex-row items-center md:items-end gap-[24px]">
                 <div className="relative group">
                   <div className="absolute inset-0 bg-primary/10 rounded-full scale-110 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
@@ -138,7 +185,22 @@ export default function MemoryPage() {
                   Back to Home
                 </button>
               </div>
-            </section>
+            </section> */}
+
+            <ProfileHeader
+              title="Memory Manager"
+              button={
+                <button
+                  onClick={() => router.push("/")}
+                  className="px-[24px] py-3 bg-surface-container-high text-on-surface-variant font-label-md text-label-md rounded-xl hover:bg-surface-container-highest transition-all flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-[20px]">
+                    arrow_back
+                  </span>
+                  Back to Home
+                </button>
+              }
+            />
 
             {/* Main Content Grid */}
             <div className="grid grid-cols-12 gap-[24px]">
@@ -227,7 +289,13 @@ export default function MemoryPage() {
                               Updated{" "}
                               {new Date(item.updated_at).toLocaleDateString()}
                             </span>
-                            <div className="flex gap-2">
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedItems.includes(item.id)}
+                                onChange={() => handleSelectItem(item.id)}
+                                className="w-5 h-5 rounded border-outline-variant text-secondary focus:ring-secondary cursor-pointer"
+                              />
                               <button
                                 onClick={() => deleteMemoryItem(item.id)}
                                 className="material-symbols-outlined text-[18px] text-on-surface-variant hover:text-error transition-colors"
@@ -275,6 +343,23 @@ export default function MemoryPage() {
           </div>
         </div>
       </main>
+
+      {/* Floating Selection Button */}
+      <FloatingSelectionButton
+        selectedCount={selectedItems.length}
+        totalCount={memoryItems.length}
+        onSelectAll={handleSelectAll}
+        onDeselectAll={() => setSelectedItems([])}
+        confirmButton={
+          <button
+            onClick={handleBulkDelete}
+            className="w-full bg-error text-on-error py-2.5 px-4 rounded-xl hover:bg-error/90 transition-colors font-label-md text-label-md"
+          >
+            Delete Selected
+          </button>
+        }
+        onConfirm={handleBulkDelete}
+      />
     </div>
   );
 }

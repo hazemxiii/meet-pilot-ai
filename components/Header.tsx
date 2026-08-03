@@ -42,7 +42,13 @@ export default function Header() {
         </button>
         {user && (
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-label-md border border-outline-variant">
-            {user.email?.[0].toUpperCase() || "U"}
+            <img
+              src={user.user_metadata?.avatar_url || ""}
+              width="100%"
+              height="100%"
+              alt={user.email?.[0].toUpperCase() || "U"}
+              className="rounded-full object-cover"
+            />
           </div>
         )}
       </div>

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import ProfileHeader from "@/components/ProfileHeader";
+import FloatingSelectionButton from "@/components/FloatingSelectionButton";
 
 interface Task {
   id: string;
@@ -168,328 +170,296 @@ export default function TasksPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="w-full max-w-[1280px] mx-auto px-5 bg-background min-h-screen">
-        <div className="flex flex-col w-full transition-all duration-700 opacity-100 translate-y-0">
-          {/* Dynamic Background Element */}
-          <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-            <div className="absolute -top-[10%] -right-[5%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]"></div>
-            <div className="absolute top-[40%] -left-[10%] w-[30%] h-[30%] bg-secondary/5 rounded-full blur-[100px]"></div>
+      <main className="pt-16 w-full max-w-container-max mx-auto px-margin-desktop bg-background min-h-screen">
+        <div className="flex flex-col w-full">
+          {/* Header & Filter Bar */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-gutter mb-unit-xl">
+            <div className="space-y-unit-xs">
+              <div className="flex items-center gap-2 text-primary">
+                <span
+                  className="material-symbols-outlined text-[20px]"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  check_circle
+                </span>
+                <span className="font-label-md text-label-md tracking-widest uppercase opacity-70">
+                  Task Manager
+                </span>
+              </div>
+              <h1 className="font-headline-xl text-headline-xl text-on-background tracking-tight">
+                Action Items
+              </h1>
+            </div>
+            <div className="flex items-center gap-unit-md">
+              <div className="relative group">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
+                  search
+                </span>
+                <input
+                  className="pl-10 pr-unit-lg py-2.5 bg-surface-container-low rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/20 transition-all w-64"
+                  placeholder="Search tasks..."
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch(e)}
+                />
+              </div>
+              <button
+                onClick={() => router.push("/tasks/new")}
+                className="bg-primary text-on-primary px-unit-lg py-2.5 rounded-xl font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  add
+                </span>
+                Create Task
+              </button>
+            </div>
           </div>
 
-          <div className="relative z-10 flex flex-col gap-[48px] pb-[48px]">
-            {/* Top Section: Profile Hero */}
-            <section className="grid grid-cols-12 gap-[24px] items-end mt-[48px] transition-all duration-700 opacity-100 translate-y-0">
-              <div className="col-span-12 lg:col-span-8 flex flex-col md:flex-row items-center md:items-end gap-[24px]">
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-primary/10 rounded-full scale-110 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                  <div className="relative w-48 h-48 rounded-full bg-primary flex items-center justify-center text-on-primary text-[64px] font-bold shadow-xl border-4 border-surface">
-                    {user.email?.[0].toUpperCase() || "U"}
-                  </div>
-                </div>
-                <div className="flex flex-col text-center md:text-left pb-2">
-                  <span className="font-label-md text-label-md text-secondary tracking-widest uppercase mb-1">
-                    Task Manager
-                  </span>
-                  <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight">
-                    {user.user_metadata?.full_name || user.email}
-                  </h1>
-                  <p className="font-body-lg text-body-lg text-on-surface-variant">
-                    {user.email}
-                  </p>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-unit-xl">
+            <div className="bg-surface-container-lowest p-unit-lg rounded-2xl shadow-sm flex flex-col gap-1 group hover:shadow-md transition-shadow cursor-default">
+              <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">
+                Total Tasks
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-headline-lg font-headline-lg text-primary">
+                  {tasks.length}
+                </span>
+              </div>
+            </div>
+            <div className="bg-surface-container-lowest p-unit-lg rounded-2xl shadow-sm flex flex-col gap-1 group hover:shadow-md transition-shadow cursor-default">
+              <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">
+                Pending
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-headline-lg font-headline-lg text-secondary">
+                  {tasks.filter((t) => !t.done).length}
+                </span>
+              </div>
+            </div>
+            <div className="bg-surface-container-lowest p-unit-lg rounded-2xl shadow-sm flex flex-col gap-1 group hover:shadow-md transition-shadow cursor-default">
+              <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">
+                Completed
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-headline-lg font-headline-lg text-on-surface">
+                  {tasks.filter((t) => t.done).length}
+                </span>
+                <div className="w-16 h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-secondary rounded-full transition-all duration-1000"
+                    style={{
+                      width: `${tasks.length > 0 ? (tasks.filter((t) => t.done).length / tasks.length) * 100 : 0}%`,
+                    }}
+                  ></div>
                 </div>
               </div>
-              <div className="col-span-12 lg:col-span-4 flex justify-center lg:justify-end gap-[24px] pb-2">
+            </div>
+          </div>
+
+          {/* Filter Bar */}
+          <div className="flex items-center gap-unit-md mb-unit-lg">
+            <select
+              value={doneFilter}
+              onChange={(e) => setDoneFilter(e.target.value)}
+              className="px-unit-lg py-2.5 bg-surface-container-low rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/20 transition-all"
+            >
+              <option value="">All Tasks</option>
+              <option value="false">Pending</option>
+              <option value="true">Completed</option>
+            </select>
+          </div>
+
+          {/* Task List Container */}
+          <div className="flex flex-col gap-unit-md relative">
+            {tasks.length === 0 ? (
+              <div className="py-unit-xl flex flex-col items-center justify-center text-center space-y-unit-lg">
+                <div className="relative w-64 h-64">
+                  <div className="absolute inset-0 bg-primary/5 rounded-full animate-pulse"></div>
+                  <div className="absolute inset-8 border-2 border-dashed border-outline-variant rounded-full"></div>
+                  <span className="material-symbols-outlined text-[80px] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-outline-variant">
+                    assignment_late
+                  </span>
+                </div>
+                <div className="max-w-xs">
+                  <h3 className="font-headline-lg text-headline-lg text-on-surface mb-2">
+                    No tasks found
+                  </h3>
+                  <p className="font-body-md text-body-md text-on-surface-variant">
+                    Create your first task to get started
+                  </p>
+                </div>
                 <button
                   onClick={() => router.push("/tasks/new")}
-                  className="px-[24px] py-3 bg-primary text-on-primary font-label-md text-label-md rounded-xl shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                  className="bg-secondary text-on-secondary px-unit-xl py-3 rounded-xl font-label-md text-label-md hover:shadow-xl transition-all"
                 >
-                  <span className="material-symbols-outlined text-[20px]">
-                    add
-                  </span>
                   Create Task
                 </button>
               </div>
-            </section>
-
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-12 gap-[24px]">
-              {/* Left Column: Navigation/Summary */}
-              <aside className="col-span-12 lg:col-span-3 flex flex-col gap-[24px]">
-                <div className="p-[24px] bg-surface-container-low rounded-2xl flex flex-col gap-[16px]">
-                  <h3 className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
-                    Task Progress
-                  </h3>
-                  <div className="relative h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
-                    <div
-                      className="absolute top-0 left-0 h-full bg-secondary transition-all duration-1000 ease-out rounded-full"
-                      style={{
-                        width: `${tasks.length > 0 ? (tasks.filter((t) => t.done).length / tasks.length) * 100 : 0}%`,
-                      }}
-                    ></div>
-                  </div>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant">
-                    {tasks.filter((t) => t.done).length} of {tasks.length} tasks
-                    completed.
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <span className="px-3 py-1 bg-surface-container-highest text-on-surface text-label-sm font-label-sm rounded-full">
-                      {tasks.length} Total
-                    </span>
-                    <span className="px-3 py-1 bg-surface-container-highest text-on-surface text-label-sm font-label-sm rounded-full">
-                      {tasks.filter((t) => !t.done).length} Pending
-                    </span>
-                  </div>
-                </div>
-                <nav className="flex flex-col gap-1">
-                  <a
-                    className="flex items-center justify-between p-[24px] bg-primary text-on-primary rounded-xl transition-all shadow-md group"
-                    href="#tasks"
+            ) : (
+              <>
+                {tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="group relative bg-surface-container-lowest hover:bg-surface transition-all duration-300 rounded-2xl p-unit-lg shadow-sm hover:shadow-xl hover:-translate-y-1 flex items-start gap-unit-lg overflow-hidden"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined">
-                        check_circle
-                      </span>
-                      <span className="font-label-md text-label-md">
-                        All Tasks
-                      </span>
-                    </div>
-                    <span className="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">
-                      chevron_right
-                    </span>
-                  </a>
-                </nav>
-              </aside>
-
-              {/* Right Column: Tasks Dashboard */}
-              <main className="col-span-12 lg:col-span-9 flex flex-col gap-[48px]">
-                {/* Section: Tasks */}
-                <div
-                  className="p-[48px] bg-surface-container-lowest rounded-[32px] shadow-sm flex flex-col gap-[24px] transition-all duration-700 opacity-100 translate-y-0"
-                  id="tasks"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <h2 className="font-headline-lg text-headline-lg text-on-surface">
-                        Tasks
-                      </h2>
-                      <p className="font-body-md text-body-md text-on-surface-variant">
-                        Manage your tasks and track progress
-                      </p>
-                    </div>
-                    <span className="material-symbols-outlined text-secondary text-[40px] opacity-20">
-                      check_circle
-                    </span>
-                  </div>
-
-                  {/* Filters and Search */}
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <form onSubmit={handleSearch} className="md:col-span-2">
-                      <input
-                        type="text"
-                        placeholder="Search tasks..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full p-3 bg-surface border border-outline-variant rounded-xl focus:ring-2 focus:ring-secondary focus:border-transparent text-on-surface placeholder:text-on-surface-variant"
-                      />
-                    </form>
-                    <select
-                      value={doneFilter}
-                      onChange={(e) => setDoneFilter(e.target.value)}
-                      className="p-3 bg-surface border border-outline-variant rounded-xl focus:ring-2 focus:ring-secondary focus:border-transparent text-on-surface"
-                    >
-                      <option value="">All Tasks</option>
-                      <option value="false">Not Done</option>
-                      <option value="true">Done</option>
-                    </select>
-                  </div>
-
-                  {/* Bulk Actions */}
-                  {selectedTasks.length > 0 && (
-                    <div className="bg-primary-container rounded-xl p-4 border border-primary-container">
-                      <div className="flex items-center justify-between">
-                        <span className="text-on-primary-container">
-                          {selectedTasks.length} task(s) selected
+                    <div className="mt-1">
+                      <button
+                        className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${
+                          task.done
+                            ? "border-secondary bg-secondary/10 text-secondary"
+                            : "border-outline-variant text-transparent hover:border-secondary"
+                        }`}
+                        onClick={() => handleToggleDone(task)}
+                      >
+                        <span className="material-symbols-outlined text-[18px] font-bold">
+                          check
                         </span>
-                        <button
-                          onClick={handleBulkDelete}
-                          className="bg-error text-on-error py-2 px-4 rounded-xl hover:bg-error/90 transition-colors font-label-md text-label-md"
+                      </button>
+                    </div>
+                    <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-unit-md">
+                      <div className="space-y-1">
+                        <h3
+                          className={`font-headline-md text-headline-md group-hover:text-primary transition-colors cursor-pointer ${
+                            task.done
+                              ? "line-through text-on-surface-variant"
+                              : "text-on-surface"
+                          }`}
+                          onClick={() => router.push(`/tasks/${task.id}`)}
                         >
-                          Delete Selected
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tasks List */}
-                  <div className="flex flex-col gap-[16px]">
-                    {tasks.length === 0 ? (
-                      <div className="bg-surface-container-low rounded-2xl p-8 text-center">
-                        <span className="material-symbols-outlined text-[64px] text-on-surface-variant opacity-20">
-                          check_circle
-                        </span>
-                        <p className="text-on-surface-variant mt-4">
-                          No tasks found
-                        </p>
-                        <p className="text-on-surface-variant text-sm mt-1">
-                          Create your first task to get started
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        {/* Header Row */}
-                        <div className="p-4 bg-surface-container-low rounded-xl flex items-center gap-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedTasks.length === tasks.length}
-                            onChange={handleSelectAll}
-                            className="w-5 h-5 rounded border-outline-variant text-secondary focus:ring-secondary"
-                          />
-                          <div className="flex-1 grid grid-cols-12 gap-4 text-sm font-label-md text-on-surface-variant">
-                            <div className="col-span-6">Title</div>
-                            <div className="col-span-2">Status</div>
-                            <div className="col-span-2">Deadline</div>
-                            <div className="col-span-2">Actions</div>
+                          {task.title}
+                        </h3>
+                        {task.details && (
+                          <p className="text-body-sm text-on-surface-variant">
+                            {task.details}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-unit-md text-on-surface-variant">
+                          {task.deadline && (
+                            <div className="flex items-center gap-1.5 bg-surface-container rounded-lg px-2.5 py-1">
+                              <span className="material-symbols-outlined text-[16px]">
+                                calendar_today
+                              </span>
+                              <span className="text-label-sm font-label-sm">
+                                {new Date(task.deadline).toLocaleDateString()}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`material-symbols-outlined text-[16px] ${
+                                task.done
+                                  ? "text-secondary"
+                                  : "text-on-surface-variant"
+                              }`}
+                            >
+                              {task.done ? "check_circle" : "schedule"}
+                            </span>
+                            <span
+                              className={`text-label-sm font-label-sm ${
+                                task.done ? "text-secondary font-semibold" : ""
+                              }`}
+                            >
+                              {task.done ? "Completed" : "Pending"}
+                            </span>
                           </div>
                         </div>
-                        {tasks.map((task) => (
-                          <div
-                            key={task.id}
-                            className="p-4 bg-surface-container-low rounded-xl hover:bg-surface-container-high transition-all flex items-center gap-4"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedTasks.includes(task.id)}
-                              onChange={() => handleSelectTask(task.id)}
-                              className="w-5 h-5 rounded border-outline-variant text-secondary focus:ring-secondary"
-                            />
-                            <div className="flex-1 grid grid-cols-12 gap-4 items-center">
-                              <div className="col-span-6">
-                                <div
-                                  className={`font-body-md text-body-md cursor-pointer hover:text-secondary transition-colors ${
-                                    task.done
-                                      ? "line-through text-on-surface-variant"
-                                      : "text-on-surface"
-                                  }`}
-                                  onClick={() =>
-                                    router.push(`/tasks/${task.id}`)
-                                  }
-                                >
-                                  {task.title}
-                                </div>
-                                {task.details && (
-                                  <div className="text-sm text-on-surface-variant truncate">
-                                    {task.details}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="col-span-2">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={task.done}
-                                    onChange={() => handleToggleDone(task)}
-                                    className="w-5 h-5 rounded border-outline-variant text-secondary focus:ring-secondary"
-                                  />
-                                  <span
-                                    className={`text-sm font-label-md ${
-                                      task.done
-                                        ? "text-secondary"
-                                        : "text-on-surface-variant"
-                                    }`}
-                                  >
-                                    {task.done ? "Done" : "Pending"}
-                                  </span>
-                                </label>
-                              </div>
-                              <div className="col-span-2 text-sm text-on-surface-variant">
-                                {task.deadline
-                                  ? new Date(task.deadline).toLocaleDateString()
-                                  : "No deadline"}
-                              </div>
-                              <div className="col-span-2 flex gap-2">
-                                <button
-                                  onClick={() =>
-                                    router.push(`/tasks/${task.id}`)
-                                  }
-                                  className="text-secondary hover:text-secondary/80 transition-colors p-2 hover:bg-surface-container rounded-lg"
-                                  title="View task"
-                                >
-                                  <span className="material-symbols-outlined text-[20px]">
-                                    visibility
-                                  </span>
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    router.push(`/tasks/${task.id}/edit`)
-                                  }
-                                  className="text-on-surface-variant hover:text-on-surface transition-colors p-2 hover:bg-surface-container rounded-lg"
-                                  title="Edit task"
-                                >
-                                  <span className="material-symbols-outlined text-[20px]">
-                                    edit
-                                  </span>
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteTask(task.id)}
-                                  className="text-error hover:text-error/80 transition-colors p-2 hover:bg-surface-container rounded-lg"
-                                  title="Delete task"
-                                >
-                                  <span className="material-symbols-outlined text-[20px]">
-                                    delete
-                                  </span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </>
-                    )}
-                  </div>
-
-                  {/* Pagination */}
-                  {pagination.totalPages > 1 && (
-                    <div className="mt-6 flex items-center justify-between">
-                      <div className="text-sm text-on-surface-variant">
-                        Showing {(pagination.page - 1) * pagination.limit + 1}{" "}
-                        to{" "}
-                        {Math.min(
-                          pagination.page * pagination.limit,
-                          pagination.total,
-                        )}{" "}
-                        of {pagination.total} tasks
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() =>
-                            setPagination({
-                              ...pagination,
-                              page: pagination.page - 1,
-                            })
-                          }
-                          disabled={pagination.page === 1}
-                          className="px-4 py-2 border border-outline-variant rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
-                        >
-                          Previous
-                        </button>
-                        <button
-                          onClick={() =>
-                            setPagination({
-                              ...pagination,
-                              page: pagination.page + 1,
-                            })
-                          }
-                          disabled={pagination.page === pagination.totalPages}
-                          className="px-4 py-2 border border-outline-variant rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
-                        >
-                          Next
-                        </button>
+                      <div className="flex items-center gap-unit-lg">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => router.push(`/tasks/${task.id}`)}
+                            className="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full transition-all"
+                            title="View task"
+                          >
+                            <span className="material-symbols-outlined">
+                              visibility
+                            </span>
+                          </button>
+                          <button
+                            onClick={() =>
+                              router.push(`/tasks/${task.id}/edit`)
+                            }
+                            className="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full transition-all"
+                            title="Edit task"
+                          >
+                            <span className="material-symbols-outlined">
+                              edit
+                            </span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="p-2 text-on-surface-variant hover:text-error hover:bg-surface-container rounded-full transition-all"
+                            title="Delete task"
+                          >
+                            <span className="material-symbols-outlined">
+                              delete
+                            </span>
+                          </button>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={selectedTasks.includes(task.id)}
+                          onChange={() => handleSelectTask(task.id)}
+                          className="w-5 h-5 rounded border-outline-variant text-secondary focus:ring-secondary"
+                        />
                       </div>
                     </div>
-                  )}
-                </div>
-              </main>
-            </div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-secondary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-on-surface-variant">
+                Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+                of {pagination.total} tasks
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() =>
+                    setPagination({ ...pagination, page: pagination.page - 1 })
+                  }
+                  disabled={pagination.page === 1}
+                  className="px-4 py-2 border border-outline-variant rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() =>
+                    setPagination({ ...pagination, page: pagination.page + 1 })
+                  }
+                  disabled={pagination.page === pagination.totalPages}
+                  className="px-4 py-2 border border-outline-variant rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Floating Selection Button */}
+          <FloatingSelectionButton
+            selectedCount={selectedTasks.length}
+            totalCount={tasks.length}
+            onSelectAll={handleSelectAll}
+            onDeselectAll={() => setSelectedTasks([])}
+            confirmButton={
+              <button
+                onClick={handleBulkDelete}
+                className="w-full bg-error text-on-error py-2.5 px-4 rounded-xl hover:bg-error/90 transition-colors font-label-md text-label-md"
+              >
+                Delete Selected
+              </button>
+            }
+            onConfirm={handleBulkDelete}
+          />
         </div>
       </main>
     </div>
