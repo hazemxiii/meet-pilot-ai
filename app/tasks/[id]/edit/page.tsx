@@ -3,7 +3,10 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import TaskForm, { emptyTaskFormValues, TaskFormValues } from "@/components/TaskForm";
+import TaskForm, {
+  emptyTaskFormValues,
+  TaskFormValues,
+} from "@/components/TaskForm";
 
 export default function EditTaskPage({
   params,
@@ -14,7 +17,8 @@ export default function EditTaskPage({
   const { user, loading } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [initialValues, setInitialValues] = useState<TaskFormValues>(emptyTaskFormValues);
+  const [initialValues, setInitialValues] =
+    useState<TaskFormValues>(emptyTaskFormValues);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -90,7 +94,9 @@ export default function EditTaskPage({
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Task</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Edit Task
+              </h1>
               <p className="text-gray-600">Update the task details below</p>
             </div>
             <button

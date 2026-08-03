@@ -13,8 +13,8 @@ export default function Sidebar() {
 
   const navItems = [
     { path: "/tasks", label: "Tasks", icon: "check_circle" },
-    { path: "/memory", label: "Memory", icon: "description" },
-    { path: "/profile", label: "Profile", icon: "person" },
+    { path: "/notes", label: "Notes", icon: "description" },
+    { path: "/memory", label: "Memory", icon: "psychology" },
   ];
 
   // Close sidebar on route change on mobile
@@ -77,7 +77,13 @@ export default function Sidebar() {
           {user && (
             <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-container transition-colors cursor-pointer">
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-label-md">
-                {user.email?.[0].toUpperCase() || "U"}
+                <img
+                  src={user.user_metadata?.avatar_url || ""}
+                  width="100%"
+                  height="100%"
+                  alt={user.email?.[0].toUpperCase() || "U"}
+                  className="rounded-full object-cover"
+                />
               </div>
               <div className="flex flex-col min-w-0">
                 <p className="text-label-md font-label-md text-on-surface truncate">

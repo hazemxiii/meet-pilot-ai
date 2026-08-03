@@ -102,7 +102,9 @@ export default function TaskDetailPage({
                 </svg>
               </button>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">{task.title}</h1>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  {task.title}
+                </h1>
                 <p className="text-gray-600">
                   Created on {new Date(task.created_at).toLocaleDateString()}
                 </p>
@@ -125,15 +127,21 @@ export default function TaskDetailPage({
             {/* Details */}
             {task.details && (
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Details</h2>
-                <p className="text-gray-700 whitespace-pre-wrap">{task.details}</p>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                  Details
+                </h2>
+                <p className="text-gray-700 whitespace-pre-wrap">
+                  {task.details}
+                </p>
               </div>
             )}
 
             {/* Files */}
             {files.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Files</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                  Files
+                </h2>
                 <div className="space-y-2">
                   {files.map((file) => (
                     <div
@@ -155,7 +163,9 @@ export default function TaskDetailPage({
                       </svg>
                       <div className="flex-1">
                         <div className="text-gray-900">{file.file_path}</div>
-                        <div className="text-sm text-gray-500">{file.mime_type}</div>
+                        <div className="text-sm text-gray-500">
+                          {file.mime_type}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -168,10 +178,12 @@ export default function TaskDetailPage({
           <div className="space-y-6">
             {/* Status */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Status</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Status
+              </h2>
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium ${getDoneColor(
-                  task.done
+                  task.done,
                 )}`}
               >
                 {task.done ? "Done" : "Not done"}
@@ -180,7 +192,9 @@ export default function TaskDetailPage({
 
             {/* Deadline */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Deadline</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Deadline
+              </h2>
               <div className="text-gray-900">
                 {task.deadline
                   ? new Date(task.deadline).toLocaleString()

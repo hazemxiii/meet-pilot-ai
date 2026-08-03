@@ -3,7 +3,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import TaskForm, { emptyTaskFormValues, TaskFormValues } from "@/components/TaskForm";
+import TaskForm, {
+  emptyTaskFormValues,
+  TaskFormValues,
+} from "@/components/TaskForm";
 
 export default function NewTaskPage() {
   const { user, loading } = useAuth();
@@ -54,8 +57,12 @@ export default function NewTaskPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Task</h1>
-              <p className="text-gray-600">Fill in the details below to create a new task</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Create New Task
+              </h1>
+              <p className="text-gray-600">
+                Fill in the details below to create a new task
+              </p>
             </div>
             <button
               onClick={() => router.push("/tasks")}
