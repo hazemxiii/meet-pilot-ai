@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useEffect } from "react";
-import { CheckCircle2, FileText, BrainCircuit, Sparkles } from "lucide-react";
+import { CheckCircle2, FileText, BrainCircuit, Video, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Sidebar() {
@@ -12,6 +12,7 @@ export default function Sidebar() {
   const { isMobileOpen, setMobileOpen } = useSidebar();
 
   const navItems = [
+    { path: "/meetings", label: "Meetings", icon: Video },
     { path: "/tasks", label: "Tasks", icon: CheckCircle2 },
     { path: "/notes", label: "Notes", icon: FileText },
     { path: "/memory", label: "Memory", icon: BrainCircuit },
