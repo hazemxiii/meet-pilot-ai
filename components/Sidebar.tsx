@@ -2,16 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useEffect } from "react";
 import { CheckCircle2, FileText, BrainCircuit, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user } = useAuth();
   const { isMobileOpen, setMobileOpen } = useSidebar();
 
   const navItems = [

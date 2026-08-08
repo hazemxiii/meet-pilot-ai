@@ -57,35 +57,36 @@ export default function NoteDetailPage({
   const resolvedParams = use(params);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
-    }
-  }, [user, loading, router]);
+    if (!user || !resolvedParams.id) return;
+    let isMounted = true;
 
-  useEffect(() => {
-    if (user && resolvedParams.id) {
-      fetchNote();
-    }
-  }, [user, resolvedParams.id]);
-
-  const fetchNote = async () => {
-    try {
-      const response = await fetch(`/api/notes/${resolvedParams.id}`);
-      if (response.ok) {
-        const data: Note = await response.json();
-        setNote(data);
-        setFormData({
-          title: data.title,
-          details: data.details,
-          tags: data.tags?.map((tag) => tag.name) || [],
-        });
+    const fetchNote = async () => {
+      try {
+        const response = await fetch(`/api/notes/${resolvedParams.id}`);
+        if (response.ok && isMounted) {
+          const data: Note = await response.json();
+          setNote(data);
+          setFormData({
+            title: data.title,
+            details: data.details,
+            tags: data.tags?.map((tag) => tag.name) || [],
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching note:", error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
-    } catch (error) {
-      console.error("Error fetching note:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+
+    fetchNote();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, resolvedParams.id]);
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
@@ -107,7 +108,7 @@ export default function NoteDetailPage({
         setFormData({
           title: updated.title,
           details: updated.details,
-          tags: updated.tags?.map((tag: any) => tag.name) || [],
+          tags: updated.tags?.map((tag: { name: string }) => tag.name) || [],
         });
       } else {
         const error = await response.json();

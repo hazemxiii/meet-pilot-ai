@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Search, Plus, MoreVertical, AlertCircle, FilePlus2 } from "lucide-react";
+import { FileText, Search, Plus, MoreVertical, FilePlus2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,22 +41,10 @@ export default function NotesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
-    }
-  }, [user, loading, router]);
-
-  useEffect(() => {
-    if (user) {
-      fetchNotes();
-    }
-  }, [user]);
-
-  const fetchNotes = async () => {
+  const fetchNotes = async (query = searchQuery) => {
     try {
       const params = new URLSearchParams();
-      if (searchQuery) params.append("search", searchQuery);
+      if (query) params.append("search", query);
 
       const response = await fetch(`/api/notes?${params.toString()}`);
       if (response.ok) {
@@ -69,6 +57,42 @@ export default function NotesPage() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [user, loading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    let isMounted = true;
+
+    const loadNotes = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (searchQuery) params.append("search", searchQuery);
+
+        const response = await fetch(`/api/notes?${params.toString()}`);
+        if (response.ok && isMounted) {
+          const data: NoteListResponse = await response.json();
+          setNotes(data.notes);
+        }
+      } catch (error) {
+        console.error("Error fetching notes:", error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadNotes();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, searchQuery]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,7 +187,7 @@ export default function NotesPage() {
                 <div className="space-y-2 max-w-sm">
                   <h3 className="text-xl font-semibold">No notes found</h3>
                   <p className="text-muted-foreground">
-                    We couldn't find any notes matching your search criteria. Try a different keyword or create a new one.
+                    We couldn&apos;t find any notes matching your search criteria. Try a different keyword or create a new one.
                   </p>
                 </div>
                 <Button onClick={() => router.push("/notes/new")} className="gap-2">

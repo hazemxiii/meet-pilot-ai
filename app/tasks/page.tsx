@@ -80,7 +80,7 @@ export default function TasksPage() {
         setIsLoading(false);
       }
     })();
-  }, [user, pagination.page, doneFilter, refreshKey]);
+  }, [user, pagination.page, pagination.limit, doneFilter, searchQuery, refreshKey]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
