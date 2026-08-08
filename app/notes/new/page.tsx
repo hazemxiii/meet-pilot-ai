@@ -3,6 +3,24 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  FileText,
+  Save,
+  X,
+  Bold,
+  Italic,
+  List,
+  Link as LinkIcon,
+  Code,
+  Sparkles,
+  UploadCloud,
+  Settings,
+  Plus
+} from "lucide-react";
 
 interface NoteFormValues {
   title: string;
@@ -75,7 +93,7 @@ export default function NewNotePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-on-surface-variant">Loading...</div>
+        <div className="text-muted-foreground animate-pulse">Loading...</div>
       </div>
     );
   }
@@ -85,52 +103,50 @@ export default function NewNotePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="relative pt-16 min-h-screen">
-        <div className="flex flex-col w-full">
-          {/* Status Bar & Top Actions */}
-          <div className="flex items-center justify-between px-margin-desktop py-unit-lg">
-            <div className="flex items-center gap-unit-md">
-              <div className="flex flex-col">
-                <div className="flex items-center gap-unit-sm text-on-surface-variant mb-1">
-                  <span className="material-symbols-outlined text-[18px]">
-                    description
-                  </span>
-                  <span className="font-label-sm text-label-sm uppercase tracking-widest">
-                    Document Editor
-                  </span>
-                </div>
-                <div className="flex items-center gap-unit-md text-on-surface-variant/60 font-label-sm text-label-sm">
-                  <span>Creating new note...</span>
-                </div>
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* Status Bar & Top Actions */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2 text-primary mb-1">
+                <FileText className="h-5 w-5" />
+                <span className="text-sm font-semibold tracking-widest uppercase opacity-80">
+                  Document Editor
+                </span>
               </div>
-            </div>
-            <div className="flex items-center gap-unit-md">
-              <button
-                onClick={() => router.push("/notes")}
-                className="px-unit-lg py-2 rounded-xl font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high transition-all"
-              >
-                Discard Changes
-              </button>
-              <button
-                onClick={handleCreate}
-                disabled={isSubmitting}
-                className="px-unit-xl py-2 rounded-xl font-label-md text-label-md bg-primary text-on-primary shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span className="material-symbols-outlined text-[20px]">save</span>
-                {isSubmitting ? "Saving..." : "Save Note"}
-              </button>
+              <span className="text-sm text-muted-foreground">
+                Creating new note...
+              </span>
             </div>
           </div>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => router.push("/notes")}
+            >
+              Discard Changes
+            </Button>
+            <Button
+              onClick={handleCreate}
+              disabled={isSubmitting}
+              className="gap-2"
+            >
+              <Save className="h-4 w-4" />
+              {isSubmitting ? "Saving..." : "Save Note"}
+            </Button>
+          </div>
+        </div>
 
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-12 gap-gutter px-margin-desktop pb-margin-desktop">
-            {/* Left Column: Editor Core */}
-            <div className="col-span-8 flex flex-col gap-gutter">
-              {/* Title Input Section */}
-              <div className="bg-surface-container-lowest p-unit-xl rounded-3xl shadow-sm">
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+          {/* Left Column: Editor Core */}
+          <div className="md:col-span-8 space-y-6">
+            {/* Title Input Section */}
+            <Card>
+              <CardContent className="pt-6 space-y-4">
                 <input
-                  className="w-full bg-transparent border-none outline-none font-headline-xl text-headline-xl text-primary placeholder:text-outline-variant/50 selection:bg-secondary-container"
+                  className="w-full bg-transparent border-none outline-none text-3xl font-bold text-primary placeholder:text-muted-foreground/50"
                   placeholder="Enter note title..."
                   type="text"
                   value={formData.title}
@@ -138,148 +154,146 @@ export default function NewNotePage() {
                     setFormData({ ...formData, title: e.target.value })
                   }
                 />
+                
                 {/* Tag Chip Selector */}
-                <div className="mt-unit-lg flex flex-wrap items-center gap-unit-sm">
+                <div className="flex flex-wrap items-center gap-2 pt-2">
                   {formData.tags.map((tag) => (
-                    <div
-                      key={tag}
-                      className="flex items-center gap-unit-sm px-3 py-1.5 bg-secondary-container text-on-secondary-container rounded-lg font-label-md text-label-md"
-                    >
-                      <span>{tag}</span>
-                      <button
+                    <Badge key={tag} variant="secondary" className="gap-1 px-3 py-1 text-sm">
+                      {tag}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-4 ml-1 hover:text-destructive hover:bg-transparent"
                         onClick={() => handleRemoveTag(tag)}
-                        className="material-symbols-outlined text-[16px] hover:text-error transition-colors"
                       >
-                        close
-                      </button>
-                    </div>
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
                   ))}
-                  <div className="flex items-center gap-unit-sm">
-                    <input
-                      className="px-3 py-1.5 bg-surface-container-high text-on-surface rounded-lg font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary/20 w-32"
+                  <div className="flex items-center gap-2">
+                    <Input
+                      className="w-32 h-8 text-sm"
                       placeholder="Add tag..."
                       type="text"
                       value={tagInput}
                       onChange={(e) => setTagInput(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
                     />
-                    <button
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
                       onClick={handleAddTag}
-                      className="flex items-center gap-unit-sm px-3 py-1.5 bg-surface-container-high text-on-surface-variant rounded-lg font-label-md text-label-md hover:bg-outline-variant/30 cursor-pointer transition-colors"
                     >
-                      <span className="material-symbols-outlined text-[18px]">add</span>
-                    </button>
+                      <Plus className="h-4 w-4" />
+                    </Button>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Rich Text Editor Surface */}
+            <Card className="min-h-[600px] flex flex-col relative">
+              {/* Editor Toolbar */}
+              <div className="flex items-center gap-1 p-2 border-b">
+                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                  <Bold className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                  <Italic className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                  <List className="h-4 w-4" />
+                </Button>
+                <div className="w-[1px] h-6 bg-border mx-2" />
+                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                  <LinkIcon className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                  <Code className="h-4 w-4" />
+                </Button>
+                
+                <div className="ml-auto">
+                  <Badge variant="outline" className="gap-1 bg-primary/5 text-primary border-primary/20">
+                    <Sparkles className="h-3 w-3" />
+                    AI Active
+                  </Badge>
                 </div>
               </div>
 
-              {/* Rich Text Editor Surface */}
-              <div className="bg-surface-container-lowest min-h-[600px] rounded-3xl shadow-sm flex flex-col overflow-hidden relative">
-                {/* Editor Toolbar */}
-                <div className="flex items-center gap-unit-sm p-unit-md border-b border-surface-container">
-                  <button className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-on-surface-variant">
-                    <span className="material-symbols-outlined">format_bold</span>
-                  </button>
-                  <button className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-on-surface-variant">
-                    <span className="material-symbols-outlined">format_italic</span>
-                  </button>
-                  <button className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-on-surface-variant">
-                    <span className="material-symbols-outlined">format_list_bulleted</span>
-                  </button>
-                  <div className="w-[1px] h-6 bg-outline-variant/30 mx-2"></div>
-                  <button className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-on-surface-variant">
-                    <span className="material-symbols-outlined">link</span>
-                  </button>
-                  <button className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-on-surface-variant">
-                    <span className="material-symbols-outlined">code</span>
-                  </button>
-                  <div className="ml-auto px-unit-md py-1 bg-secondary/10 text-secondary rounded-full font-label-sm text-label-sm flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[14px]">
-                      auto_awesome
-                    </span>
-                    AI Assistant Active
+              {/* Markdown / Rich Text Body */}
+              <textarea
+                className="p-6 flex-1 focus-within:outline-none overflow-y-auto text-base text-foreground leading-relaxed bg-transparent resize-none min-h-[500px]"
+                placeholder="Start writing your note..."
+                value={formData.details}
+                onChange={(e) =>
+                  setFormData({ ...formData, details: e.target.value })
+                }
+              />
+
+              {/* AI Floating Action */}
+              <div className="absolute bottom-6 right-6">
+                <Button className="gap-2 rounded-full shadow-lg" size="lg">
+                  Ask AI to Refine
+                  <div className="w-6 h-6 rounded-full bg-primary-foreground/20 flex items-center justify-center -mr-1">
+                    <Sparkles className="h-3 w-3" />
                   </div>
-                </div>
-
-                {/* Markdown / Rich Text Body */}
-                <textarea
-                  className="p-unit-xl flex-1 focus-within:outline-none overflow-y-auto font-body-lg text-body-lg text-on-surface leading-relaxed bg-transparent resize-none min-h-[500px]"
-                  placeholder="Start writing your note..."
-                  value={formData.details}
-                  onChange={(e) =>
-                    setFormData({ ...formData, details: e.target.value })
-                  }
-                />
-
-                {/* AI Floating Action */}
-                <div className="absolute bottom-unit-lg right-unit-lg">
-                  <button className="group flex items-center gap-unit-md bg-primary text-on-primary pl-unit-lg pr-unit-sm py-unit-sm rounded-full shadow-2xl hover:shadow-primary/40 transition-all active:scale-95">
-                    <span className="font-label-md text-label-md">
-                      Ask AI to Refine
-                    </span>
-                    <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
-                      <span className="material-symbols-outlined">auto_awesome</span>
-                    </div>
-                  </button>
-                </div>
+                </Button>
               </div>
-            </div>
+            </Card>
+          </div>
 
-            {/* Right Column: Metadata & Files */}
-            <div className="col-span-4 flex flex-col gap-gutter">
-              {/* Associated Files Section */}
-              <div className="bg-surface-container p-unit-lg rounded-3xl">
-                <div className="flex items-center justify-between mb-unit-lg">
-                  <h3 className="font-headline-md text-headline-md text-primary">
-                    Attachments
-                  </h3>
-                  <span className="font-label-sm text-label-sm text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded">
-                    0 Files
-                  </span>
-                </div>
-
+          {/* Right Column: Metadata & Files */}
+          <div className="md:col-span-4 space-y-6">
+            {/* Associated Files Section */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-lg">Attachments</CardTitle>
+                <Badge variant="secondary">0 Files</Badge>
+              </CardHeader>
+              <CardContent>
                 {/* Drop Zone */}
-                <div className="border-2 border-dashed border-outline-variant/50 rounded-2xl p-unit-xl flex flex-col items-center justify-center gap-unit-sm group cursor-pointer hover:border-secondary hover:bg-secondary/5 transition-all">
-                  <span className="material-symbols-outlined text-outline-variant group-hover:text-secondary text-[32px]">
-                    upload_file
-                  </span>
-                  <p className="font-label-md text-label-md text-on-surface-variant group-hover:text-secondary text-center">
+                <div className="border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center gap-3 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors group">
+                  <UploadCloud className="h-10 w-10 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <p className="text-sm text-muted-foreground group-hover:text-primary transition-colors">
                     Click or drag to upload additional assets
                   </p>
                 </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              {/* Quick Context Card */}
-              <div className="bg-primary text-on-primary p-unit-xl rounded-3xl overflow-hidden relative">
-                {/* Abstract Background Detail */}
-                <div className="absolute -right-12 -top-12 w-48 h-48 bg-secondary/20 rounded-full blur-3xl"></div>
-                <div className="absolute -left-12 -bottom-12 w-32 h-32 bg-secondary/10 rounded-full blur-2xl"></div>
-                <div className="relative z-10">
-                  <h4 className="font-label-sm text-label-sm uppercase tracking-widest text-on-primary/60 mb-unit-md">
+            {/* Quick Context Card */}
+            <Card className="bg-primary text-primary-foreground border-none overflow-hidden relative">
+              <div className="absolute -right-12 -top-12 w-48 h-48 bg-primary-foreground/10 rounded-full blur-3xl" />
+              <div className="absolute -left-12 -bottom-12 w-32 h-32 bg-primary-foreground/10 rounded-full blur-2xl" />
+              <CardContent className="pt-6 relative z-10 space-y-6">
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-widest text-primary-foreground/70 mb-3">
                     Collaborators
                   </h4>
-                  <div className="flex -space-x-3 mb-unit-xl">
-                    <div className="w-10 h-10 rounded-full border-2 border-primary bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed font-semibold text-xs">
+                  <div className="flex -space-x-3">
+                    <div className="w-10 h-10 rounded-full border-2 border-primary bg-primary-foreground text-primary flex items-center justify-center font-bold text-sm shadow-sm">
                       {user.email?.[0].toUpperCase() || "U"}
                     </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-label-sm text-label-sm text-on-primary/60 uppercase">
-                        Visibility
-                      </p>
-                      <p className="font-label-md text-label-md">Internal Team Only</p>
-                    </div>
-                    <button className="w-10 h-10 rounded-xl bg-on-primary/10 hover:bg-on-primary/20 flex items-center justify-center transition-colors">
-                      <span className="material-symbols-outlined">settings</span>
-                    </button>
-                  </div>
                 </div>
-              </div>
-            </div>
+                
+                <div className="flex items-center justify-between pt-2">
+                  <div>
+                    <p className="text-xs font-semibold text-primary-foreground/70 uppercase mb-1">
+                      Visibility
+                    </p>
+                    <p className="font-medium text-sm">Internal Team Only</p>
+                  </div>
+                  <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground">
+                    <Settings className="h-5 w-5" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

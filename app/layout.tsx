@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
-import Link from "next/link";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 
@@ -35,26 +35,24 @@ export default function RootLayout({
     >
       <head>
         <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-          rel="stylesheet"
-        />
-        <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap"
           rel="stylesheet"
         />
       </head>
       <body className="min-h-full flex flex-col">
-        <AuthProvider>
-          <SidebarProvider>
-            <Sidebar />
-            <div className="w-full">
-              <Header />
-              <main className="w-full max-w-[1280px] mx-auto pl-0 min-[800px]:pl-64 pt-16 bg-background min-h-screen">
-                {children}
-              </main>
-            </div>
-          </SidebarProvider>
-        </AuthProvider>
+        <TooltipProvider>
+          <AuthProvider>
+            <SidebarProvider>
+              <Sidebar />
+              <div className="w-full">
+                <Header />
+                <main className="w-full max-w-[1280px] mx-auto pl-0 min-[800px]:pl-64 pt-16 bg-background min-h-screen">
+                  {children}
+                </main>
+              </div>
+            </SidebarProvider>
+          </AuthProvider>
+        </TooltipProvider>
       </body>
     </html>
   );

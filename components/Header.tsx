@@ -1,55 +1,46 @@
 "use client";
 
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSidebar } from "@/contexts/SidebarContext";
+import { Menu, Sparkles, Bell } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 
 export default function Header() {
   const { user } = useAuth();
   const { setMobileOpen } = useSidebar();
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 bg-surface/80 backdrop-blur-xl z-40 flex items-center justify-between px-unit-lg shadow-[0_1px_8px_rgba(0,0,0,0.04)] max-[800px]:left-0 max-[800px]:right-0 min-[800px]:left-64">
-      <div className="flex items-center gap-unit-md">
-        <button
-          className="max-[800px]:flex min-[800px]:hidden p-2 rounded-lg hover:bg-surface-container-high text-on-surface-variant transition-colors"
+    <header className="fixed top-0 left-0 right-0 h-16 bg-background/95 backdrop-blur z-40 flex items-center justify-between px-6 border-b max-[800px]:left-0 max-[800px]:right-0 min-[800px]:left-64">
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="max-[800px]:flex min-[800px]:hidden"
           onClick={() => setMobileOpen(true)}
         >
-          <span className="material-symbols-outlined text-[24px]">menu</span>
-        </button>
-        <button className="max-[800px]:hidden min-[800px]:flex items-center gap-2 px-unit-md py-1.5 rounded-lg bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest transition-colors">
-          <span className="material-symbols-outlined text-[20px]">
-            grid_view
-          </span>
-          <span className="text-label-md font-label-md">
-            Personal Workspace
-          </span>
-          <span className="material-symbols-outlined text-[20px]">
-            unfold_more
-          </span>
-        </button>
+          <Menu className="h-5 w-5" />
+        </Button>
       </div>
 
-      <div className="flex items-center gap-unit-md">
-        <button className="bg-primary text-on-primary px-unit-lg py-2 rounded-xl font-label-md text-label-md flex items-center gap-2 hover:bg-primary/90 transition-all shadow-sm">
-          <span className="material-symbols-outlined text-[20px]">
-            auto_awesome
-          </span>
+      <div className="flex items-center gap-4">
+        <Button className="gap-2">
+          <Sparkles className="h-4 w-4" />
           Analyze New Meeting
-        </button>
-        <div className="w-px h-8 bg-outline-variant"></div>
-        <button className="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors">
-          <span className="material-symbols-outlined">notifications</span>
-        </button>
+        </Button>
+        <Separator orientation="vertical" className="h-6" />
+        <Button variant="ghost" size="icon" className="text-muted-foreground">
+          <Bell className="h-5 w-5" />
+        </Button>
         {user && (
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-label-md border border-outline-variant">
-            <img
-              src={user.user_metadata?.avatar_url || ""}
-              width="100%"
-              height="100%"
-              alt={user.email?.[0].toUpperCase() || "U"}
-              className="rounded-full object-cover"
-            />
-          </div>
+          <Link href="/profile" className="rounded-full ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+            <Avatar className="h-8 w-8 border hover:opacity-80 transition-opacity cursor-pointer">
+              <AvatarImage src={user.user_metadata?.avatar_url || ""} />
+              <AvatarFallback>{user.email?.[0].toUpperCase() || "U"}</AvatarFallback>
+            </Avatar>
+          </Link>
         )}
       </div>
     </header>
