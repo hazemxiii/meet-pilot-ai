@@ -3,6 +3,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { FileText, Search, Plus, MoreVertical, AlertCircle, FilePlus2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Note {
   id: string;
@@ -82,8 +93,8 @@ export default function NotesPage() {
 
   if (loading || isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-on-surface-variant">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-muted-foreground animate-pulse">Loading...</div>
       </div>
     );
   }
@@ -93,141 +104,137 @@ export default function NotesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="pt-16 w-full max-w-container-max mx-auto px-margin-desktop bg-background min-h-screen">
-        <div className="flex flex-col w-full">
-          {/* Header Section */}
-          <div className="relative px-0 py-unit-xl overflow-hidden mb-unit-xl">
-            <div className="absolute inset-0 bg-gradient-to-br from-surface-container-low via-background to-surface-container-high opacity-50"></div>
-            <div className="absolute -right-24 -top-24 w-96 h-96 bg-secondary/5 rounded-full blur-[120px]"></div>
-            <div className="absolute left-1/4 bottom-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px]"></div>
-            <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-unit-lg">
-              <div className="max-w-2xl">
-                <div className="flex items-center gap-unit-sm mb-unit-sm">
-                  <span className="w-8 h-[2px] bg-secondary"></span>
-                  <span className="font-label-md text-label-md text-secondary uppercase tracking-[0.2em]">
-                    Knowledge Base
-                  </span>
-                </div>
-                <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight">
-                  Notes & <span className="text-secondary">Intelligence</span>
-                </h1>
-                <p className="mt-unit-sm font-body-lg text-body-lg text-on-surface-variant max-w-xl">
-                  Your centralized repository of AI-distilled insights, project documentation, and meeting transcripts.
-                </p>
-              </div>
-              <button
-                onClick={() => router.push("/notes/new")}
-                className="flex items-center gap-unit-sm bg-primary text-on-primary px-unit-lg py-3 rounded-xl hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
-              >
-                <span className="material-symbols-outlined text-[20px]">add</span>
-                <span className="font-label-md text-label-md">Create Note</span>
-              </button>
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="max-w-2xl space-y-2">
+            <div className="flex items-center gap-2 text-primary">
+              <FileText className="h-5 w-5" />
+              <span className="text-sm font-semibold tracking-widest uppercase opacity-80">
+                Knowledge Base
+              </span>
             </div>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+              Notes & <span className="text-primary">Intelligence</span>
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              Your centralized repository of AI-distilled insights, project documentation, and meeting transcripts.
+            </p>
           </div>
+          <Button
+            size="lg"
+            className="gap-2"
+            onClick={() => router.push("/notes/new")}
+          >
+            <Plus className="h-5 w-5" />
+            Create Note
+          </Button>
+        </div>
 
-          {/* Filter & Search Bar */}
-          <div className="mb-unit-xl">
-            <div className="bg-surface-container-lowest shadow-sm rounded-2xl p-unit-md flex flex-col lg:flex-row gap-unit-md items-center border border-outline-variant/30">
-              <div className="relative w-full lg:flex-1">
-                <span className="material-symbols-outlined absolute left-unit-md top-1/2 -translate-y-1/2 text-on-surface-variant">
-                  search
-                </span>
-                <input
-                  className="w-full bg-surface-container-low border-none rounded-xl py-3 pl-12 pr-unit-md text-body-md focus:ring-2 focus:ring-secondary/20 transition-all outline-none"
-                  placeholder="Search by title, snippets, or #tags..."
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch(e)}
-                />
-              </div>
-              <div className="flex items-center gap-unit-sm overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0">
-                <button className="whitespace-nowrap px-unit-lg py-2 rounded-full bg-secondary-container text-on-secondary-container font-label-md text-label-md">
-                  All Notes
-                </button>
-                <button className="whitespace-nowrap px-unit-lg py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-highest transition-colors">
-                  Recent
-                </button>
-              </div>
+        {/* Filter & Search Bar */}
+        <Card className="border-muted/50 bg-muted/10 shadow-none">
+          <CardContent className="p-4 flex flex-col sm:flex-row gap-4 items-center">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-9 w-full bg-background"
+                placeholder="Search by title, snippets, or #tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch(e)}
+              />
             </div>
-          </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button variant="default" className="flex-1 sm:flex-none">All Notes</Button>
+              <Button variant="outline" className="flex-1 sm:flex-none">Recent</Button>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Notes Grid */}
-          <div className="pb-margin-desktop">
-            {notes.length === 0 ? (
-              <div className="hidden flex-col items-center justify-center py-unit-xl text-center">
-                <div className="w-64 h-64 mb-unit-lg">
-                  <div className="w-full h-full bg-primary/5 rounded-full flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[80px] text-outline-variant">
-                      description
-                    </span>
-                  </div>
+        {/* Notes Grid */}
+        <div className="pb-8">
+          {notes.length === 0 ? (
+            <Card className="border-dashed py-16">
+              <CardContent className="flex flex-col items-center justify-center text-center space-y-6">
+                <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center">
+                  <FilePlus2 className="h-10 w-10 text-muted-foreground" />
                 </div>
-                <h3 className="font-headline-lg text-headline-lg text-on-surface mb-unit-sm">
-                  No notes found
-                </h3>
-                <p className="font-body-lg text-body-lg text-on-surface-variant max-w-md">
-                  We couldn't find any notes matching your search criteria. Try a different keyword or create a new one.
-                </p>
-                <button
-                  onClick={() => router.push("/notes/new")}
-                  className="mt-unit-lg flex items-center gap-unit-sm bg-secondary text-on-secondary px-unit-xl py-3 rounded-xl"
+                <div className="space-y-2 max-w-sm">
+                  <h3 className="text-xl font-semibold">No notes found</h3>
+                  <p className="text-muted-foreground">
+                    We couldn't find any notes matching your search criteria. Try a different keyword or create a new one.
+                  </p>
+                </div>
+                <Button onClick={() => router.push("/notes/new")} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create New Note
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {notes.map((note) => (
+                <Card
+                  key={note.id}
+                  className="group flex flex-col h-full hover:border-primary/50 transition-colors cursor-pointer"
+                  onClick={() => router.push(`/notes/${note.id}`)}
                 >
-                  <span className="material-symbols-outlined">add</span>
-                  <span className="font-label-md text-label-md">Create New Note</span>
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-unit-lg">
-                {notes.map((note) => (
-                  <div
-                    key={note.id}
-                    className="note-card group bg-surface-container-lowest rounded-[24px] p-unit-lg shadow-sm hover:shadow-xl transition-all duration-500 border border-transparent hover:border-secondary/20 cursor-pointer"
-                    onClick={() => router.push(`/notes/${note.id}`)}
-                  >
-                    <div className="flex justify-between items-start mb-unit-md">
-                      <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary">
-                        <span className="material-symbols-outlined">description</span>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteNote(note.id);
-                        }}
-                        className="text-on-surface-variant/40 hover:text-error"
-                      >
-                        <span className="material-symbols-outlined">more_vert</span>
-                      </button>
+                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <FileText className="h-5 w-5" />
                     </div>
-                    <h3 className="font-headline-md text-headline-md text-on-surface mb-unit-sm group-hover:text-secondary transition-colors">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        className="h-8 w-8 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-muted-foreground opacity-0 group-hover:opacity-100"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteNote(note.id);
+                          }}
+                        >
+                          Delete note
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </CardHeader>
+                  <CardContent className="flex flex-col flex-1 pb-4">
+                    <CardTitle className="mb-2 text-xl group-hover:text-primary transition-colors line-clamp-2">
                       {note.title}
-                    </h3>
-                    <p className="font-body-md text-body-md text-on-surface-variant line-clamp-4 mb-unit-lg">
+                    </CardTitle>
+                    <p className="text-muted-foreground text-sm line-clamp-4 mb-4 flex-1">
                       {note.details}
                     </p>
-                    <div className="mt-auto pt-unit-md border-t border-outline-variant/10 flex items-center justify-between">
-                      <div className="flex flex-wrap gap-unit-xs">
-                        {note.tags?.map((tag) => (
-                          <span
-                            key={tag.id}
-                            className="bg-surface-container-high px-2 py-1 rounded-md text-on-surface-variant font-label-sm text-label-sm"
-                          >
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t">
+                      <div className="flex flex-wrap gap-1">
+                        {note.tags?.slice(0, 3).map((tag) => (
+                          <Badge key={tag.id} variant="secondary" className="text-xs">
                             #{tag.name}
-                          </span>
+                          </Badge>
                         ))}
+                        {(note.tags?.length || 0) > 3 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{note.tags!.length - 3}
+                          </Badge>
+                        )}
                       </div>
-                      <span className="text-on-surface-variant/40 font-label-sm text-label-sm">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
                         {new Date(note.updated_at).toLocaleDateString()}
                       </span>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

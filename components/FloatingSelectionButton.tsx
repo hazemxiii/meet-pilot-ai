@@ -1,6 +1,9 @@
 "use client";
 
 import { ReactNode, useState } from "react";
+import { CheckCircle2, ChevronUp, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 interface FloatingSelectionButtonProps {
   selectedCount: number;
@@ -26,67 +29,62 @@ export default function FloatingSelectionButton({
   return (
     <div className="fixed bottom-6 right-6 z-50">
       {!isExpanded ? (
-        <button
+        <Button
+          size="lg"
+          className="rounded-full shadow-xl gap-2 transition-transform hover:scale-105"
           onClick={() => setIsExpanded(true)}
-          className="bg-primary text-on-primary px-5 py-3 rounded-full shadow-2xl hover:shadow-primary/30 transition-all duration-300 flex items-center gap-3 hover:scale-105 active:scale-95"
         >
-          <span className="material-symbols-outlined text-[20px]">
-            check_circle
-          </span>
-          <span className="font-label-md text-label-md font-medium">
-            {selectedCount} selected
-          </span>
-          <span className="material-symbols-outlined text-[20px]">
-            expand_less
-          </span>
-        </button>
+          <CheckCircle2 className="h-5 w-5" />
+          <span>{selectedCount} selected</span>
+          <ChevronUp className="h-5 w-5" />
+        </Button>
       ) : (
-        <div className="bg-surface-container-high/95 backdrop-blur-xl rounded-3xl shadow-2xl p-5 min-w-[300px] border border-outline/10 animate-in slide-in-from-bottom-4 duration-300">
+        <Card className="p-5 min-w-[300px] shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-[22px]">
-                check_circle
-              </span>
+              <CheckCircle2 className="text-primary h-6 w-6" />
               <div>
-                <span className="font-label-lg text-label-lg text-on-surface font-semibold">
+                <span className="font-semibold text-foreground">
                   {selectedCount}
                 </span>
-                <span className="text-label-sm text-on-surface-variant ml-1">
+                <span className="text-sm text-muted-foreground ml-1">
                   / {totalCount} selected
                 </span>
               </div>
             </div>
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
               onClick={() => setIsExpanded(false)}
-              className="p-2 hover:bg-surface-container-high rounded-full transition-colors"
             >
-              <span className="material-symbols-outlined text-on-surface-variant text-[20px]">
-                close
-              </span>
-            </button>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
 
           <div className="flex items-center gap-2 mb-4">
-            <button
+            <Button
+              variant="outline"
+              className="flex-1"
               onClick={onSelectAll}
               disabled={selectedCount === totalCount}
-              className="flex-1 px-4 py-2.5 bg-surface-container rounded-2xl font-label-md text-label-md text-on-surface hover:bg-surface-container-high transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
             >
               Select All
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
               onClick={onDeselectAll}
               disabled={selectedCount === 0}
-              className="flex-1 px-4 py-2.5 bg-surface-container rounded-2xl font-label-md text-label-md text-on-surface hover:bg-surface-container-high transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
             >
               Deselect
-            </button>
+            </Button>
           </div>
 
           <div onClick={onConfirm} className="cursor-pointer">
             {confirmButton}
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

@@ -3,8 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import ProfileHeader from "@/components/ProfileHeader";
 import FloatingSelectionButton from "@/components/FloatingSelectionButton";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CheckCircle2, Search, Plus, CalendarIcon, Clock, Eye, Edit2, Trash2, AlertCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface Task {
   id: string;
@@ -32,7 +39,7 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [doneFilter, setDoneFilter] = useState("");
+  const [doneFilter, setDoneFilter] = useState("all");
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -58,7 +65,7 @@ export default function TasksPage() {
           limit: pagination.limit.toString(),
         });
 
-        if (doneFilter) params.append("done", doneFilter);
+        if (doneFilter !== "all") params.append("done", doneFilter);
         if (searchQuery) params.append("search", searchQuery);
 
         const response = await fetch(`/api/tasks?${params.toString()}`);
@@ -158,7 +165,7 @@ export default function TasksPage() {
   if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-on-surface-variant">Loading...</div>
+        <div className="text-muted-foreground animate-pulse">Loading...</div>
       </div>
     );
   }
@@ -168,299 +175,254 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="pt-16 w-full max-w-container-max mx-auto px-margin-desktop bg-background min-h-screen">
-        <div className="flex flex-col w-full">
-          {/* Header & Filter Bar */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-gutter mb-unit-xl">
-            <div className="space-y-unit-xs">
-              <div className="flex items-center gap-2 text-primary">
-                <span
-                  className="material-symbols-outlined text-[20px]"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                >
-                  check_circle
-                </span>
-                <span className="font-label-md text-label-md tracking-widest uppercase opacity-70">
-                  Task Manager
-                </span>
-              </div>
-              <h1 className="font-headline-xl text-headline-xl text-on-background tracking-tight">
-                Action Items
-              </h1>
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* Header & Actions */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-primary mb-2">
+              <CheckCircle2 className="h-5 w-5" />
+              <span className="text-sm font-semibold tracking-widest uppercase opacity-80">
+                Task Manager
+              </span>
             </div>
-            <div className="flex items-center gap-unit-md">
-              <div className="relative group">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
-                  search
-                </span>
-                <input
-                  className="pl-10 pr-unit-lg py-2.5 bg-surface-container-low rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/20 transition-all w-64"
-                  placeholder="Search tasks..."
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch(e)}
-                />
-              </div>
-              <button
-                onClick={() => router.push("/tasks/new")}
-                className="bg-primary text-on-primary px-unit-lg py-2.5 rounded-xl font-label-md text-label-md flex items-center gap-2 hover:shadow-lg transition-all active:scale-[0.98]"
-              >
-                <span className="material-symbols-outlined text-[20px]">
-                  add
-                </span>
-                Create Task
-              </button>
-            </div>
+            <h1 className="text-3xl font-bold tracking-tight">Action Items</h1>
           </div>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-9 w-64 bg-background"
+                placeholder="Search tasks..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch(e)}
+              />
+            </div>
+            <Button onClick={() => router.push("/tasks/new")} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Create Task
+            </Button>
+          </div>
+        </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-unit-xl">
-            <div className="bg-surface-container-lowest p-unit-lg rounded-2xl shadow-sm flex flex-col gap-1 group hover:shadow-md transition-shadow cursor-default">
-              <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                 Total Tasks
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-headline-lg font-headline-lg text-primary">
-                  {tasks.length}
-                </span>
-              </div>
-            </div>
-            <div className="bg-surface-container-lowest p-unit-lg rounded-2xl shadow-sm flex flex-col gap-1 group hover:shadow-md transition-shadow cursor-default">
-              <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{tasks.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                 Pending
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-headline-lg font-headline-lg text-secondary">
-                  {tasks.filter((t) => !t.done).length}
-                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-primary">
+                {tasks.filter((t) => !t.done).length}
               </div>
-            </div>
-            <div className="bg-surface-container-lowest p-unit-lg rounded-2xl shadow-sm flex flex-col gap-1 group hover:shadow-md transition-shadow cursor-default">
-              <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                 Completed
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-headline-lg font-headline-lg text-on-surface">
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="text-3xl font-bold">
                   {tasks.filter((t) => t.done).length}
-                </span>
-                <div className="w-16 h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+                </div>
+                <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-secondary rounded-full transition-all duration-1000"
+                    className="h-full bg-primary transition-all"
                     style={{
                       width: `${tasks.length > 0 ? (tasks.filter((t) => t.done).length / tasks.length) * 100 : 0}%`,
                     }}
-                  ></div>
+                  />
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
+        </div>
 
-          {/* Filter Bar */}
-          <div className="flex items-center gap-unit-md mb-unit-lg">
-            <select
-              value={doneFilter}
-              onChange={(e) => setDoneFilter(e.target.value)}
-              className="px-unit-lg py-2.5 bg-surface-container-low rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-secondary/20 transition-all"
-            >
-              <option value="">All Tasks</option>
-              <option value="false">Pending</option>
-              <option value="true">Completed</option>
-            </select>
-          </div>
+        {/* Filter Bar */}
+        <div className="flex items-center gap-4">
+          <Select value={doneFilter} onValueChange={(val) => setDoneFilter(val || "all")}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Tasks" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tasks</SelectItem>
+              <SelectItem value="false">Pending</SelectItem>
+              <SelectItem value="true">Completed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-          {/* Task List Container */}
-          <div className="flex flex-col gap-unit-md relative">
-            {tasks.length === 0 ? (
-              <div className="py-unit-xl flex flex-col items-center justify-center text-center space-y-unit-lg">
-                <div className="relative w-64 h-64">
-                  <div className="absolute inset-0 bg-primary/5 rounded-full animate-pulse"></div>
-                  <div className="absolute inset-8 border-2 border-dashed border-outline-variant rounded-full"></div>
-                  <span className="material-symbols-outlined text-[80px] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-outline-variant">
-                    assignment_late
-                  </span>
+        {/* Task List */}
+        <div className="space-y-4">
+          {tasks.length === 0 ? (
+            <Card className="py-12 border-dashed">
+              <CardContent className="flex flex-col items-center justify-center text-center space-y-6">
+                <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center">
+                  <AlertCircle className="h-10 w-10 text-muted-foreground" />
                 </div>
-                <div className="max-w-xs">
-                  <h3 className="font-headline-lg text-headline-lg text-on-surface mb-2">
-                    No tasks found
-                  </h3>
-                  <p className="font-body-md text-body-md text-on-surface-variant">
+                <div className="space-y-1">
+                  <h3 className="text-xl font-semibold">No tasks found</h3>
+                  <p className="text-muted-foreground">
                     Create your first task to get started
                   </p>
                 </div>
-                <button
-                  onClick={() => router.push("/tasks/new")}
-                  className="bg-secondary text-on-secondary px-unit-xl py-3 rounded-xl font-label-md text-label-md hover:shadow-xl transition-all"
-                >
+                <Button onClick={() => router.push("/tasks/new")}>
                   Create Task
-                </button>
-              </div>
-            ) : (
-              <>
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="group relative bg-surface-container-lowest hover:bg-surface transition-all duration-300 rounded-2xl p-unit-lg shadow-sm hover:shadow-xl hover:-translate-y-1 flex items-start gap-unit-lg overflow-hidden"
-                  >
-                    <div className="mt-1">
-                      <button
-                        className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${
-                          task.done
-                            ? "border-secondary bg-secondary/10 text-secondary"
-                            : "border-outline-variant text-transparent hover:border-secondary"
-                        }`}
-                        onClick={() => handleToggleDone(task)}
-                      >
-                        <span className="material-symbols-outlined text-[18px] font-bold">
-                          check
-                        </span>
-                      </button>
-                    </div>
-                    <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-unit-md">
-                      <div className="space-y-1">
-                        <h3
-                          className={`font-headline-md text-headline-md group-hover:text-primary transition-colors cursor-pointer ${
-                            task.done
-                              ? "line-through text-on-surface-variant"
-                              : "text-on-surface"
-                          }`}
-                          onClick={() => router.push(`/tasks/${task.id}`)}
-                        >
-                          {task.title}
-                        </h3>
-                        {task.details && (
-                          <p className="text-body-sm text-on-surface-variant">
-                            {task.details}
-                          </p>
-                        )}
-                        <div className="flex flex-wrap items-center gap-unit-md text-on-surface-variant">
-                          {task.deadline && (
-                            <div className="flex items-center gap-1.5 bg-surface-container rounded-lg px-2.5 py-1">
-                              <span className="material-symbols-outlined text-[16px]">
-                                calendar_today
-                              </span>
-                              <span className="text-label-sm font-label-sm">
-                                {new Date(task.deadline).toLocaleDateString()}
-                              </span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={`material-symbols-outlined text-[16px] ${
-                                task.done
-                                  ? "text-secondary"
-                                  : "text-on-surface-variant"
-                              }`}
-                            >
-                              {task.done ? "check_circle" : "schedule"}
-                            </span>
-                            <span
-                              className={`text-label-sm font-label-sm ${
-                                task.done ? "text-secondary font-semibold" : ""
-                              }`}
-                            >
-                              {task.done ? "Completed" : "Pending"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-unit-lg">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => router.push(`/tasks/${task.id}`)}
-                            className="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full transition-all"
-                            title="View task"
-                          >
-                            <span className="material-symbols-outlined">
-                              visibility
-                            </span>
-                          </button>
-                          <button
-                            onClick={() =>
-                              router.push(`/tasks/${task.id}/edit`)
-                            }
-                            className="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full transition-all"
-                            title="Edit task"
-                          >
-                            <span className="material-symbols-outlined">
-                              edit
-                            </span>
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="p-2 text-on-surface-variant hover:text-error hover:bg-surface-container rounded-full transition-all"
-                            title="Delete task"
-                          >
-                            <span className="material-symbols-outlined">
-                              delete
-                            </span>
-                          </button>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={selectedTasks.includes(task.id)}
-                          onChange={() => handleSelectTask(task.id)}
-                          className="w-5 h-5 rounded border-outline-variant text-secondary focus:ring-secondary"
-                        />
-                      </div>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-r from-secondary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
-                  </div>
-                ))}
-              </>
-            )}
-          </div>
-
-          {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-between">
-              <div className="text-sm text-on-surface-variant">
-                Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
-                of {pagination.total} tasks
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() =>
-                    setPagination({ ...pagination, page: pagination.page - 1 })
-                  }
-                  disabled={pagination.page === 1}
-                  className="px-4 py-2 border border-outline-variant rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() =>
-                    setPagination({ ...pagination, page: pagination.page + 1 })
-                  }
-                  disabled={pagination.page === pagination.totalPages}
-                  className="px-4 py-2 border border-outline-variant rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Floating Selection Button */}
-          <FloatingSelectionButton
-            selectedCount={selectedTasks.length}
-            totalCount={tasks.length}
-            onSelectAll={handleSelectAll}
-            onDeselectAll={() => setSelectedTasks([])}
-            confirmButton={
-              <button
-                onClick={handleBulkDelete}
-                className="w-full bg-error text-on-error py-2.5 px-4 rounded-xl hover:bg-error/90 transition-colors font-label-md text-label-md"
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            tasks.map((task) => (
+              <Card
+                key={task.id}
+                className={cn(
+                  "transition-all duration-200 hover:shadow-md",
+                  task.done && "bg-muted/30"
+                )}
               >
-                Delete Selected
-              </button>
-            }
-            onConfirm={handleBulkDelete}
-          />
+                <CardContent className="p-4 flex items-start gap-4">
+                  <Checkbox
+                    checked={task.done}
+                    onCheckedChange={() => handleToggleDone(task)}
+                    className="mt-1 h-5 w-5 rounded-md"
+                  />
+                  <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-2">
+                      <h3
+                        className={cn(
+                          "font-semibold text-lg cursor-pointer hover:text-primary transition-colors",
+                          task.done && "line-through text-muted-foreground"
+                        )}
+                        onClick={() => router.push(`/tasks/${task.id}`)}
+                      >
+                        {task.title}
+                      </h3>
+                      {task.details && (
+                        <p className="text-sm text-muted-foreground">
+                          {task.details}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-3">
+                        {task.deadline && (
+                          <Badge variant="secondary" className="gap-1 font-normal">
+                            <CalendarIcon className="h-3.5 w-3.5" />
+                            {new Date(task.deadline).toLocaleDateString()}
+                          </Badge>
+                        )}
+                        <Badge
+                          variant={task.done ? "default" : "outline"}
+                          className="gap-1 font-normal"
+                        >
+                          <Clock className="h-3.5 w-3.5" />
+                          {task.done ? "Completed" : "Pending"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => router.push(`/tasks/${task.id}`)}
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => router.push(`/tasks/${task.id}/edit`)}
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <Checkbox
+                        checked={selectedTasks.includes(task.id)}
+                        onCheckedChange={() => handleSelectTask(task.id)}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
-      </main>
+
+        {/* Pagination */}
+        {pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+              {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+              of {pagination.total} tasks
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setPagination({ ...pagination, page: pagination.page - 1 })
+                }
+                disabled={pagination.page === 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setPagination({ ...pagination, page: pagination.page + 1 })
+                }
+                disabled={pagination.page === pagination.totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <FloatingSelectionButton
+          selectedCount={selectedTasks.length}
+          totalCount={tasks.length}
+          onSelectAll={handleSelectAll}
+          onDeselectAll={() => setSelectedTasks([])}
+          confirmButton={
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={handleBulkDelete}
+            >
+              Delete Selected
+            </Button>
+          }
+          onConfirm={handleBulkDelete}
+        />
+      </div>
     </div>
   );
 }
