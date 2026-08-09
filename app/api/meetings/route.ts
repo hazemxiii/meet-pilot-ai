@@ -2,6 +2,101 @@ import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { pipeline } from "@xenova/transformers";
+import { use } from "react";
+
+// export async function POST(request: Request) {
+//   const cookieStore = await cookies();
+//   const supabase = createClient(cookieStore);
+
+//   const {
+//     data: { user },
+//     error: userError,
+//   } = await supabase.auth.getUser();
+
+//   if (userError || !user) {
+//     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//   }
+
+//   const formData = await request.formData();
+//   let title = formData.get("title");
+//   if (!title) {
+//     title = "Untitled Meeting";
+//   }
+//   const time = new Date();
+//   const userId = user.id;
+//   let transcript = formData.get("transcript") as string | null | undefined;
+//   if (!transcript) {
+//     const file = formData.get("file") as File;
+//     if (!file) {
+//       return NextResponse.json({ error: "No file provided" }, { status: 400 });
+//     }
+//     if (file.type === "text/plain") {
+//       transcript = await file.text();
+//     }
+//   }
+//   const { data, error } = await supabase
+//     .from("meetings")
+//     .insert({
+//       title,
+//       transcript: transcript || "",
+//       time,
+//       user_id: userId,
+//     })
+//     .select();
+
+//   const generateEmbedding = await pipeline(
+//     "feature-extraction",
+//     "Supabase/gte-small",
+//   );
+
+//   const chunks = splitIntoChunks(transcript || "");
+//   let chunkIndex = 0;
+//   for (const chunk of chunks) {
+//     const embedding = await generateEmbedding(chunk, {
+//       pooling: "mean",
+//       normalize: true,
+//     });
+//     const { data: chunkData, error: chunkError } = await supabase
+//       .from("meeting_chunks")
+//       .insert({
+//         user_id: userId,
+//         meeting_id: data?.[0]?.id,
+//         text: chunk,
+//         embedding: Array.from(embedding.data),
+//         chunk_index: chunkIndex++,
+//       });
+//     console.log("Chunk inserted:", chunkData, chunkError);
+//   }
+
+//   if (error) {
+//     return NextResponse.json({ error: error.message }, { status: 500 });
+//   }
+
+//   return NextResponse.json(data);
+// }
+
+function splitIntoChunks(text: string, chunkSize = 500, overlap = 75) {
+  const words = text.split(/\s+/).filter(Boolean);
+
+  const chunks = [];
+
+  let start = 0;
+
+  while (start < words.length) {
+    const end = Math.min(start + chunkSize, words.length);
+
+    chunks.push(words.slice(start, end).join(" "));
+
+    if (end === words.length) {
+      break;
+    }
+
+    start = end - overlap;
+  }
+
+  return chunks;
+}
 
 // The Chrome extension authenticates with a Bearer token (it has no cookies),
 // while the website uses cookie sessions. Resolve the user from either source.
@@ -51,7 +146,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ meetings: meetings || [] });
   } catch (err: unknown) {
     console.error("GET /api/meetings error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 
@@ -61,10 +159,14 @@ export async function POST(request: Request) {
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
-    const {
-      data: { user },
-      error: userError,
-    } = await getUser(request, supabase);
+    // TODO debug
+    // const {
+    //   data: { user },
+    //   error: userError,
+    // } = await getUser(request, supabase);
+
+    const user = { id: "ba21ea18-b44e-43b6-87e1-9f909584621c" };
+    const userError = null;
 
     if (userError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -74,11 +176,18 @@ export async function POST(request: Request) {
     const { title, transcript, time } = body;
 
     // Validate payload
-    const meetingTitle = (title && typeof title === "string" && title.trim()) ? title.trim() : "Google Meet Recording";
+    const meetingTitle =
+      title && typeof title === "string" && title.trim()
+        ? title.trim()
+        : "Google Meet Recording";
     const transcriptText = Array.isArray(transcript)
       ? JSON.stringify(transcript)
-      : (typeof transcript === "string" ? transcript : "");
-    const meetingTime = time ? new Date(time).toISOString() : new Date().toISOString();
+      : typeof transcript === "string"
+        ? transcript
+        : "";
+    const meetingTime = time
+      ? new Date(time).toISOString()
+      : new Date().toISOString();
 
     // Check if meeting with this title/time or ID exists to update or insert
     const { data: existingMeeting } = await supabase
@@ -90,7 +199,9 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     let resultMeeting;
+    let meetingId;
     if (existingMeeting) {
+      meetingId = existingMeeting.id;
       const { data, error } = await supabase
         .from("meetings")
         .update({
@@ -120,6 +231,31 @@ export async function POST(request: Request) {
 
       if (error) throw error;
       resultMeeting = data;
+      meetingId = resultMeeting.id;
+    }
+
+    const generateEmbedding = await pipeline(
+      "feature-extraction",
+      "Supabase/gte-small",
+    );
+
+    const chunks = splitIntoChunks(transcriptText || "");
+    let chunkIndex = 0;
+    for (const chunk of chunks) {
+      const embedding = await generateEmbedding(chunk, {
+        pooling: "mean",
+        normalize: true,
+      });
+      const { data: chunkData, error: chunkError } = await supabase
+        .from("meeting_chunks")
+        .insert({
+          user_id: user.id,
+          meeting_id: meetingId,
+          text: chunk,
+          embedding: Array.from(embedding.data),
+          chunk_index: chunkIndex++,
+        });
+      console.log("Chunk inserted:", chunkData, chunkError);
     }
 
     return NextResponse.json({ meeting: resultMeeting }, { status: 201 });
