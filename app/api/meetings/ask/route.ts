@@ -17,7 +17,8 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  let { prompt, meetingsIds } = body;
+  let { meetingsIds } = body;
+  const { prompt } = body;
   if (!prompt) {
     return NextResponse.json({ error: "Missing prompt" }, { status: 400 });
   }
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
     system_prompt: `You are a helpful assistant that answers questions based on the provided context.
     
     Context:
-    ${data.map((chunk: any) => chunk.text).join("\n")}
+    ${data.map((chunk: { text: string }) => chunk.text).join("\n")}
     
     `,
     max_tokens: 300,
