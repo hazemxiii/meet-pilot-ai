@@ -239,7 +239,7 @@ export async function POST(request: Request) {
       "Supabase/gte-small",
     );
 
-    const chunks = splitIntoChunks(transcript || "");
+    const chunks = splitIntoChunks(transcriptText || "");
     let chunkIndex = 0;
     for (const chunk of chunks) {
       const embedding = await generateEmbedding(chunk, {
