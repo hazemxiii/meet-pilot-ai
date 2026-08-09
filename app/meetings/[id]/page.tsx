@@ -153,10 +153,10 @@ export default function MeetingDetailPage({
         setAnalysisNotes(data.notes || []);
         setAnalysisTasks(data.tasks || []);
         setSelectedNotes(
-          new Set(data.notes?.map((_: any, i: number) => i) || []),
+          new Set(data.notes?.map((_: AnalysisNote, i: number) => i) || []),
         );
         setSelectedTasks(
-          new Set(data.tasks?.map((_: any, i: number) => i) || []),
+          new Set(data.tasks?.map((_: AnalysisTask, i: number) => i) || []),
         );
         setShowAnalysisDialog(true);
       } else {
