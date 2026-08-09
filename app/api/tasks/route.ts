@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     }
 
     // Apply sorting
-    query = query.order(sortBy as any, { ascending: sortOrder === "asc" });
+    query = query.order(sortBy, { ascending: sortOrder === "asc" });
 
     // Apply pagination
     const from = (page - 1) * limit;
@@ -62,7 +62,7 @@ export async function GET(request: Request) {
         totalPages: Math.ceil((count || 0) / limit),
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(task, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

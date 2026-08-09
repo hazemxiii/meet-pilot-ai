@@ -7,6 +7,9 @@ import TaskForm, {
   emptyTaskFormValues,
   TaskFormValues,
 } from "@/components/TaskForm";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
 
 export default function NewTaskPage() {
   const { user, loading } = useAuth();
@@ -40,8 +43,8 @@ export default function NewTaskPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-muted-foreground animate-pulse">Loading...</div>
       </div>
     );
   }
@@ -51,38 +54,42 @@ export default function NewTaskPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-3xl mx-auto space-y-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Create New Task
-              </h1>
-              <p className="text-gray-600">
-                Fill in the details below to create a new task
-              </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-primary mb-2">
+              <CheckCircle2 className="h-5 w-5" />
+              <span className="text-sm font-semibold tracking-widest uppercase opacity-80">
+                Task Manager
+              </span>
             </div>
-            <button
-              onClick={() => router.push("/tasks")}
-              className="bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              Back to Tasks
-            </button>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">
+              Create New Task
+            </h1>
+            <p className="text-muted-foreground">
+              Fill in the details below to create a new task
+            </p>
           </div>
+          <Button variant="outline" onClick={() => router.push("/tasks")} className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Tasks
+          </Button>
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <TaskForm
-            initialValues={emptyTaskFormValues}
-            onSubmit={handleCreate}
-            onCancel={() => router.push("/tasks")}
-            submitLabel="Create Task"
-            submittingLabel="Creating..."
-          />
-        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <TaskForm
+              initialValues={emptyTaskFormValues}
+              onSubmit={handleCreate}
+              onCancel={() => router.push("/tasks")}
+              submitLabel="Create Task"
+              submittingLabel="Creating..."
+            />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

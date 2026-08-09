@@ -42,7 +42,9 @@ export async function GET(request: Request) {
     }
 
     // Apply sorting
-    query = query.order(sortBy as any, { ascending: sortOrder === "asc" });
+    const validSortFields = ["created_at", "updated_at", "title"];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : "created_at";
+    query = query.order(sortField, { ascending: sortOrder === "asc" });
 
     // Apply pagination
     const from = (page - 1) * limit;
@@ -64,7 +66,7 @@ export async function GET(request: Request) {
         totalPages: Math.ceil((count || 0) / limit),
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -139,7 +141,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(note, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

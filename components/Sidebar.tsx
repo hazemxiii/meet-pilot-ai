@@ -2,19 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useEffect } from "react";
+import { CheckCircle2, FileText, BrainCircuit, Video, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user } = useAuth();
   const { isMobileOpen, setMobileOpen } = useSidebar();
 
   const navItems = [
-    { path: "/tasks", label: "Tasks", icon: "check_circle" },
-    { path: "/notes", label: "Notes", icon: "description" },
-    { path: "/memory", label: "Memory", icon: "psychology" },
+    { path: "/meetings", label: "Meetings", icon: Video },
+    { path: "/tasks", label: "Tasks", icon: CheckCircle2 },
+    { path: "/notes", label: "Notes", icon: FileText },
+    { path: "/memory", label: "Memory", icon: BrainCircuit },
   ];
 
   // Close sidebar on route change on mobile
@@ -22,7 +23,7 @@ export default function Sidebar() {
     if (isMobileOpen) {
       setMobileOpen(false);
     }
-  }, [pathname]);
+  }, [pathname, isMobileOpen, setMobileOpen]);
 
   return (
     <>
@@ -34,68 +35,43 @@ export default function Sidebar() {
         />
       )}
       <aside
-        className={`fixed left-0 top-0 h-full w-64 bg-surface-container-low flex flex-col z-50 
-          transform transition-transform duration-300 ease-in-out
-          ${isMobileOpen ? "translate-x-0" : "-translate-x-full"} 
-          min-[800px]:translate-x-0
-        `}
+        className={cn(
+          "fixed left-0 top-0 h-full w-64 bg-background border-r flex flex-col z-50 transform transition-transform duration-300 ease-in-out",
+          isMobileOpen ? "translate-x-0" : "-translate-x-full",
+          "min-[800px]:translate-x-0"
+        )}
       >
-        <div className="p-unit-lg flex items-center gap-3">
+        <div className="p-6 flex items-center gap-3">
           <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="material-symbols-outlined text-on-primary text-[20px]">
-              auto_awesome
-            </span>
+            <Sparkles className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="font-headline-md text-headline-md text-primary tracking-tight">
+          <span className="font-semibold text-lg tracking-tight">
             Meet Pilot
           </span>
         </div>
 
-        <nav className="flex-1 px-unit-md mt-unit-sm space-y-1">
+        <nav className="flex-1 px-4 mt-2 space-y-1">
           {navItems.map((item) => {
             const isActive = pathname === item.path;
+            const Icon = item.icon;
             return (
               <Link
                 key={item.path}
                 href={item.path}
-                className={`flex items-center px-unit-md py-3 rounded-xl transition-all font-label-md text-label-md ${
+                className={cn(
+                  "flex items-center px-4 py-3 rounded-md transition-colors text-sm font-medium",
                   isActive
-                    ? "bg-primary-container text-on-primary-container"
-                    : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-                }`}
+                    ? "bg-secondary text-secondary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
               >
-                <span className="material-symbols-outlined mr-3">
-                  {item.icon}
-                </span>
+                <Icon className="mr-3 h-5 w-5" />
                 {item.label}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-unit-lg mt-auto border-t border-outline-variant/30">
-          {user && (
-            <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-container transition-colors cursor-pointer">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-label-md">
-                <img
-                  src={user.user_metadata?.avatar_url || ""}
-                  width="100%"
-                  height="100%"
-                  alt={user.email?.[0].toUpperCase() || "U"}
-                  className="rounded-full object-cover"
-                />
-              </div>
-              <div className="flex flex-col min-w-0">
-                <p className="text-label-md font-label-md text-on-surface truncate">
-                  {user.user_metadata?.full_name || user.email}
-                </p>
-                <p className="text-label-sm font-label-sm text-on-surface-variant truncate">
-                  Pro Plan
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
       </aside>
     </>
   );

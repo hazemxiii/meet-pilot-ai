@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(createdTasks, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -102,7 +102,7 @@ export async function DELETE(request: Request) {
     }
 
     return NextResponse.json({ success: true, deletedCount: taskIds.length });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -163,7 +163,7 @@ export async function PATCH(request: Request) {
     }
 
     return NextResponse.json(updatedTasks);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

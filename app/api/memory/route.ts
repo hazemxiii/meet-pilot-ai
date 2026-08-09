@@ -27,7 +27,7 @@ export async function GET() {
     }
 
     return NextResponse.json(memoryItems);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(memoryItem, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -130,7 +130,7 @@ export async function DELETE(request: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
