@@ -307,6 +307,7 @@ async function syncFinalizedSessions() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          external_id: session.sessionId,
           title: session.title,
           transcript: session.transcript,
           time: session.startedAt,
@@ -383,6 +384,7 @@ async function syncLiveSessionThrottled() {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
+        external_id: live.sessionId,
         title: live.title,
         transcript: live.transcript,
         time: live.startedAt,

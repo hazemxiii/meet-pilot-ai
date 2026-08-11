@@ -5,24 +5,90 @@
   <style>
     :root {
       --blue: #1a73e8;
+      --blue-hover: #1558b0;
       --blue-light: #e8f0fe;
       --border: #dadce0;
+      --bg: #f8f9fa;
+      --card: #ffffff;
       --text: #202124;
       --text-muted: #5f6368;
+      --red: #ea4335;
+      --green: #188038;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(60, 64, 67, 0.18);
     }
+    * { box-sizing: border-box; }
     body {
       font-family: "Google Sans", Roboto, Arial, sans-serif;
-      width: 340px;
-      padding: 14px;
-      background: #ffffff;
+      width: 360px;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
       color: var(--text);
       direction: auto;
     }
-    h3 {
-      margin: 0 0 12px 0;
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+    }
+    .header img {
+      width: 24px;
+      height: 24px;
+    }
+    .header h3 {
+      margin: 0;
       font-size: 15px;
       font-weight: 600;
-      color: var(--blue);
+      color: var(--text);
+      flex: 1;
+    }
+    .rec-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      color: var(--red);
+      background: rgba(234, 67, 53, 0.1);
+      border: 1px solid rgba(234, 67, 53, 0.35);
+      padding: 3px 8px;
+      border-radius: 999px;
+      opacity: 0;
+      transition: opacity 200ms ease;
+    }
+    .rec-badge.show { opacity: 1; }
+    .rec-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: pulse 1.5s ease-out infinite;
+    }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.5); }
+      70%  { box-shadow: 0 0 0 5px rgba(234, 67, 53, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0); }
+    }
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      margin: 10px 12px;
+      box-shadow: var(--shadow);
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 0 0 8px 0;
     }
     label {
       display: block;
@@ -32,13 +98,14 @@
     }
     select {
       width: 100%;
-      padding: 6px 8px;
+      padding: 7px 8px;
       margin-bottom: 8px;
       border: 1px solid var(--border);
-      border-radius: 6px;
+      border-radius: 8px;
       background: #fff;
       color: var(--text);
       font-size: 13px;
+      font-family: inherit;
     }
     select:focus {
       outline: none;
@@ -46,73 +113,77 @@
     }
     button {
       padding: 7px 12px;
-      margin-right: 6px;
-      margin-bottom: 6px;
       cursor: pointer;
-      border: 1px solid var(--blue);
-      border-radius: 6px;
-      background: var(--blue-light);
-      color: var(--blue);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
       font-size: 13px;
       font-weight: 500;
-      transition: background 0.15s ease;
+      font-family: inherit;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
-    button:hover {
+    button:hover { background: var(--bg); }
+    button.primary {
       background: var(--blue);
+      border-color: var(--blue);
       color: #fff;
     }
-    #startCcBtn {
-      width: 100%;
-      background: var(--blue);
-      color: #fff;
-    }
-    #startCcBtn:hover {
-      background: #1558b0;
-    }
+    button.primary:hover { background: var(--blue-hover); }
+    button.full { width: 100%; }
     #signInBtn {
       width: 100%;
       background: #fff;
-      border: 2px solid var(--blue);
+      border: 1.5px solid var(--blue);
       color: var(--blue);
       font-weight: 600;
       padding: 8px 12px;
-      margin: 0 0 6px 0;
       display: inline-block;
     }
-    #signInBtn:hover {
-      background: var(--blue-light);
-    }
+    #signInBtn:hover { background: var(--blue-light); }
     #signOutBtn {
       border: 1px solid var(--border);
       background: #f1f3f4;
       color: var(--text-muted);
     }
-    #signOutBtn:hover {
-      background: #e8eaed;
-      color: var(--text);
-    }
+    #signOutBtn:hover { background: #e8eaed; color: var(--text); }
     #authNote {
       font-size: 12px;
       color: var(--text-muted);
       min-height: 14px;
-      margin-bottom: 4px;
+      margin-top: 6px;
     }
     #ccStatus {
       font-size: 12px;
-      margin-top: 4px;
+      margin-top: 6px;
       color: var(--text-muted);
       min-height: 14px;
     }
-    #log {
-      max-height: 280px;
-      overflow-y: auto;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px;
-      font-size: 13px;
-      margin-bottom: 10px;
-      background: #fafbfc;
+    #ccStatus.ok { color: var(--green); }
+    #ccStatus.err { color: var(--red); }
+    .status-line {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
     }
+    .sync-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #f1f3f4;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+    .sync-chip.ok { color: var(--green); background: #e6f4ea; border-color: rgba(24,128,56,0.3); }
+    .sync-chip.bad { color: var(--red); background: #fce8e6; border-color: rgba(234,67,53,0.3); }
     #meta {
       margin-bottom: 8px;
       font-size: 12px;
@@ -121,10 +192,19 @@
     .meta-title {
       font-weight: 600;
       color: var(--text);
+      font-size: 13px;
       margin-bottom: 2px;
     }
-    .meta-row {
-      line-height: 1.5;
+    .meta-row { line-height: 1.5; }
+    #log {
+      max-height: 240px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 13px;
+      margin-bottom: 10px;
+      background: #fff;
     }
     .line {
       margin-bottom: 8px;
@@ -134,35 +214,49 @@
       font-weight: 600;
       color: var(--blue);
     }
-    .live-line {
+    .empty {
       color: var(--text-muted);
-      font-style: italic;
-      opacity: 0.85;
-    }
-    .live-line .speaker {
-      color: var(--text-muted);
+      font-size: 12px;
+      text-align: center;
+      padding: 14px 8px;
     }
     .controls {
       display: flex;
       flex-wrap: wrap;
+      gap: 6px;
     }
+    .controls button { margin: 0; }
     hr {
       border: none;
       border-top: 1px solid var(--border);
-      margin: 10px 0;
+      margin: 0;
+    }
+    .footer {
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      padding: 10px 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <h3>Meet Transcript</h3>
+  <div class="header">
+    <img src="icons/icon32.png" alt="">
+    <h3>Meet Transcript</h3>
+    <span class="rec-badge" id="recBadge"><span class="rec-dot"></span>REC</span>
+  </div>
 
-  <div id="authSection" style="margin-bottom: 4px;">
+  <div class="section">
+    <div class="section-title">Account</div>
     <button id="signInBtn">Sign in with Google</button>
     <button id="signOutBtn" style="display: none;">Sign out</button>
     <div id="authNote">Sign in to upload transcripts to your account.</div>
   </div>
 
-  <div style="margin-bottom: 10px;">
+  <div class="section">
+    <div class="section-title">Captions</div>
     <label for="langSelect">Caption language</label>
     <select id="langSelect">
       <option value="ar-EG">Arabic (Egypt)</option>
@@ -176,22 +270,28 @@
       <option value="es-ES">Spanish (Spain)</option>
       <option value="de-DE">German</option>
     </select>
-    <button id="startCcBtn">Turn on Captions in this language</button>
+    <button id="startCcBtn" class="primary full">Turn on Captions in this language</button>
     <div id="ccStatus"></div>
   </div>
 
-  <hr>
-
-  <div id="meta"></div>
-  <div id="log">Loading…</div>
-  <div class="controls">
-    <button id="copyBtn">Copy</button>
-    <button id="downloadBtn">Download .txt</button>
-    <button id="exportJsonBtn">Export all (.json)</button>
-    <button id="clearBtn">Clear</button>
-    <button id="syncBtn">Sync Now</button>
+  <div class="section">
+    <div class="section-title">Transcript</div>
+    <div id="meta"></div>
+    <div id="log"><div class="empty">No captions captured yet. Make sure captions (CC) are turned on in Meet.</div></div>
+    <div class="controls">
+      <button id="copyBtn">Copy</button>
+      <button id="downloadBtn">Download .txt</button>
+      <button id="exportJsonBtn">Export all (.json)</button>
+      <button id="clearBtn">Clear</button>
+      <button id="syncBtn">Sync Now</button>
+    </div>
+    <div class="status-line" id="syncStatus"></div>
   </div>
-  <div id="syncStatus" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;"></div>
+
+  <div class="footer">
+    <span id="footerText">Captures live captions and syncs to your account.</span>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

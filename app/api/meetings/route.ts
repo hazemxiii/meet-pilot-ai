@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { title, transcript, time } = body;
+    const { title, transcript, time, external_id } = body;
 
     // Validate payload
     const meetingTitle = (title && typeof title === "string" && title.trim()) ? title.trim() : "Google Meet Recording";
@@ -79,15 +79,36 @@ export async function POST(request: Request) {
       ? JSON.stringify(transcript)
       : (typeof transcript === "string" ? transcript : "");
     const meetingTime = time ? new Date(time).toISOString() : new Date().toISOString();
+    const externalId = (typeof external_id === "string" && external_id.trim())
+      ? external_id.trim()
+      : null;
 
-    // Check if meeting with this title/time or ID exists to update or insert
-    const { data: existingMeeting } = await supabase
-      .from("meetings")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("title", meetingTitle)
-      .limit(1)
-      .maybeSingle();
+    // The extension syncs the SAME session many times (live + finalize) —
+    // look it up by its stable external_id so every POST updates one row
+    // instead of accidentally creating a duplicate (or overwriting a
+    // different meeting with the same title). Website-created meetings have
+    // no external_id, so those keep matching on title as before.
+    let existingMeeting;
+    if (externalId) {
+      const { data } = await supabase
+        .from("meetings")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("external_id", externalId)
+        .maybeSingle();
+      existingMeeting = data;
+    }
+
+    if (!existingMeeting) {
+      const { data } = await supabase
+        .from("meetings")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("title", meetingTitle)
+        .limit(1)
+        .maybeSingle();
+      existingMeeting = data;
+    }
 
     let resultMeeting;
     if (existingMeeting) {
@@ -97,6 +118,7 @@ export async function POST(request: Request) {
           transcript: transcriptText,
           time: meetingTime,
           updated_at: new Date().toISOString(),
+          ...(externalId ? { external_id: externalId } : {}),
         })
         .eq("id", existingMeeting.id)
         .select()
@@ -114,6 +136,7 @@ export async function POST(request: Request) {
           time: meetingTime,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          ...(externalId ? { external_id: externalId } : {}),
         })
         .select()
         .single();
