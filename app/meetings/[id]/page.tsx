@@ -3,12 +3,12 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import type { User } from "@supabase/supabase-js";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +56,17 @@ interface AnalysisTask {
   title: string;
   description: string;
   deadline: string;
+}
+
+function getUserDisplayName(user: User): string {
+  const meta = user.user_metadata as Record<string, unknown> | undefined;
+  const name =
+    (meta?.full_name as string | undefined) ||
+    (meta?.name as string | undefined) ||
+    (meta?.user_name as string | undefined);
+  if (name && name.trim()) return name.trim();
+  if (user.email) return user.email.split("@")[0];
+  return "You";
 }
 
 export default function MeetingDetailPage({
@@ -111,18 +122,18 @@ export default function MeetingDetailPage({
               } else if (typeof parsed === "object") {
                 // If it's an object but not an array, try to extract text
                 setParsedTranscript([
-                  { speaker: "Unknown", text: JSON.stringify(parsed) },
+                  { speaker: getUserDisplayName(user), text: JSON.stringify(parsed) },
                 ]);
               } else {
                 // If it's a string or other primitive, treat as plain text
                 setParsedTranscript([
-                  { speaker: "Unknown", text: String(parsed) },
+                  { speaker: getUserDisplayName(user), text: String(parsed) },
                 ]);
               }
             } catch {
               // Handle plain text transcript
               setParsedTranscript([
-                { speaker: "Unknown", text: data.transcript },
+                { speaker: getUserDisplayName(user), text: data.transcript },
               ]);
             }
           }
@@ -294,9 +305,6 @@ export default function MeetingDetailPage({
                 <CardTitle className="text-2xl font-bold">
                   {dbMeeting.title || "Meeting Captions"}
                 </CardTitle>
-                <CardDescription className="text-sm mt-1">
-                  Database ID: {dbMeeting.id}
-                </CardDescription>
               </div>
               <Badge variant="secondary" className="gap-1 px-3 py-1">
                 <MessageSquare className="h-3.5 w-3.5 text-primary" />

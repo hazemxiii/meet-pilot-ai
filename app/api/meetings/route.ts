@@ -2,84 +2,11 @@ import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { pipeline } from "@xenova/transformers";
-import { use } from "react";
-
-// export async function POST(request: Request) {
-//   const cookieStore = await cookies();
-//   const supabase = createClient(cookieStore);
-
-//   const {
-//     data: { user },
-//     error: userError,
-//   } = await supabase.auth.getUser();
-
-//   if (userError || !user) {
-//     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-//   }
-
-//   const formData = await request.formData();
-//   let title = formData.get("title");
-//   if (!title) {
-//     title = "Untitled Meeting";
-//   }
-//   const time = new Date();
-//   const userId = user.id;
-//   let transcript = formData.get("transcript") as string | null | undefined;
-//   if (!transcript) {
-//     const file = formData.get("file") as File;
-//     if (!file) {
-//       return NextResponse.json({ error: "No file provided" }, { status: 400 });
-//     }
-//     if (file.type === "text/plain") {
-//       transcript = await file.text();
-//     }
-//   }
-//   const { data, error } = await supabase
-//     .from("meetings")
-//     .insert({
-//       title,
-//       transcript: transcript || "",
-//       time,
-//       user_id: userId,
-//     })
-//     .select();
-
-//   const generateEmbedding = await pipeline(
-//     "feature-extraction",
-//     "Supabase/gte-small",
-//   );
-
-//   const chunks = splitIntoChunks(transcript || "");
-//   let chunkIndex = 0;
-//   for (const chunk of chunks) {
-//     const embedding = await generateEmbedding(chunk, {
-//       pooling: "mean",
-//       normalize: true,
-//     });
-//     const { data: chunkData, error: chunkError } = await supabase
-//       .from("meeting_chunks")
-//       .insert({
-//         user_id: userId,
-//         meeting_id: data?.[0]?.id,
-//         text: chunk,
-//         embedding: Array.from(embedding.data),
-//         chunk_index: chunkIndex++,
-//       });
-//     console.log("Chunk inserted:", chunkData, chunkError);
-//   }
-
-//   if (error) {
-//     return NextResponse.json({ error: error.message }, { status: 500 });
-//   }
-
-//   return NextResponse.json(data);
-// }
 
 function splitIntoChunks(text: string, chunkSize = 500, overlap = 75) {
   const words = text.split(/\s+/).filter(Boolean);
 
-  const chunks = [];
+  const chunks: string[] = [];
 
   let start = 0;
 
@@ -98,19 +25,21 @@ function splitIntoChunks(text: string, chunkSize = 500, overlap = 75) {
   return chunks;
 }
 
-// The Chrome extension authenticates with a Bearer token (it has no cookies),
-// while the website uses cookie sessions. Resolve the user from either source.
+// Chrome Extension uses Bearer token.
+// Website uses cookie session.
 async function getUser(request: Request, supabase: SupabaseClient) {
   const authHeader = request.headers.get("authorization");
+
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
   return supabase.auth.getUser(token ?? undefined);
 }
 
-// GET /api/meetings - Fetch meetings from Supabase DB for logged in user
+// GET /api/meetings
 export async function GET(request: Request) {
   try {
     const cookieStore = await cookies();
+
     const supabase = createClient(cookieStore);
 
     const {
@@ -119,20 +48,31 @@ export async function GET(request: Request) {
     } = await getUser(request, supabase);
 
     if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+        },
+        {
+          status: 401,
+        },
+      );
     }
 
-    const { searchParams } = new URL(request.url);
+    const searchParams = new URL(request.url).searchParams;
+
     const search = searchParams.get("search");
 
     let query = supabase
       .from("meetings")
       .select("*")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", {
+        ascending: false,
+      });
 
     if (search) {
       const safeSearch = search.replace(/[%_,()]/g, "");
+
       query = query.ilike("title", `%${safeSearch}%`);
     }
 
@@ -140,68 +80,103 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error("Supabase error listing meetings:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+
+      return NextResponse.json(
+        {
+          error: error.message,
+        },
+        {
+          status: 500,
+        },
+      );
     }
 
-    return NextResponse.json({ meetings: meetings || [] });
-  } catch (err: unknown) {
-    console.error("GET /api/meetings error:", err);
+    return NextResponse.json({
+      meetings: meetings || [],
+    });
+  } catch (error) {
+    console.error("GET /api/meetings error:", error);
+
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
+      {
+        error: "Internal server error",
+      },
+      {
+        status: 500,
+      },
     );
   }
 }
 
-// POST /api/meetings - Save or update meeting transcript from Chrome Extension / UI
+// POST /api/meetings
 export async function POST(request: Request) {
   try {
     const cookieStore = await cookies();
+
     const supabase = createClient(cookieStore);
 
-    // TODO debug
-    // const {
-    //   data: { user },
-    //   error: userError,
-    // } = await getUser(request, supabase);
-
-    const user = { id: "ba21ea18-b44e-43b6-87e1-9f909584621c" };
-    const userError = null;
+    const {
+      data: { user },
+      error: userError,
+    } = await getUser(request, supabase);
 
     if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+        },
+        {
+          status: 401,
+        },
+      );
     }
 
     const body = await request.json();
+
     const { title, transcript, time } = body;
 
-    // Validate payload
     const meetingTitle =
       title && typeof title === "string" && title.trim()
         ? title.trim()
         : "Google Meet Recording";
+
     const transcriptText = Array.isArray(transcript)
       ? JSON.stringify(transcript)
       : typeof transcript === "string"
         ? transcript
         : "";
+
     const meetingTime = time
       ? new Date(time).toISOString()
       : new Date().toISOString();
 
-    // Check if meeting with this title/time or ID exists to update or insert
-    const { data: existingMeeting } = await supabase
-      .from("meetings")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("title", meetingTitle)
-      .limit(1)
-      .maybeSingle();
+    // ========================================
+    // Check existing meeting
+    // ========================================
+
+    const { data: existingMeeting, error: existingMeetingError } =
+      await supabase
+        .from("meetings")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("title", meetingTitle)
+        .limit(1)
+        .maybeSingle();
+
+    if (existingMeetingError) {
+      throw existingMeetingError;
+    }
 
     let resultMeeting;
-    let meetingId;
+    let meetingId: number;
+
+    // ========================================
+    // Update existing meeting
+    // ========================================
+
     if (existingMeeting) {
       meetingId = existingMeeting.id;
+
       const { data, error } = await supabase
         .from("meetings")
         .update({
@@ -210,12 +185,21 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", existingMeeting.id)
+        .eq("user_id", user.id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
+
       resultMeeting = data;
-    } else {
+    }
+
+    // ========================================
+    // Create new meeting
+    // ========================================
+    else {
       const { data, error } = await supabase
         .from("meetings")
         .insert({
@@ -229,39 +213,71 @@ export async function POST(request: Request) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
+
       resultMeeting = data;
-      meetingId = resultMeeting.id;
+      meetingId = data.id;
     }
 
-    const generateEmbedding = await pipeline(
-      "feature-extraction",
-      "Supabase/gte-small",
-    );
+    // ========================================
+    // Generate embeddings
+    // ========================================
 
-    const chunks = splitIntoChunks(transcriptText || "");
-    let chunkIndex = 0;
-    for (const chunk of chunks) {
-      const embedding = await generateEmbedding(chunk, {
-        pooling: "mean",
-        normalize: true,
-      });
-      const { data: chunkData, error: chunkError } = await supabase
-        .from("meeting_chunks")
-        .insert({
-          user_id: user.id,
-          meeting_id: meetingId,
-          text: chunk,
-          embedding: Array.from(embedding.data),
-          chunk_index: chunkIndex++,
+    if (transcriptText.trim()) {
+      const { pipeline } = await import("@xenova/transformers");
+
+      const generateEmbedding = await pipeline(
+        "feature-extraction",
+        "Supabase/gte-small",
+      );
+
+      const chunks = splitIntoChunks(transcriptText);
+
+      let chunkIndex = 0;
+
+      for (const chunk of chunks) {
+        const embedding = await generateEmbedding(chunk, {
+          pooling: "mean",
+          normalize: true,
         });
-      console.log("Chunk inserted:", chunkData, chunkError);
+
+        const { data: chunkData, error: chunkError } = await supabase
+          .from("meeting_chunks")
+          .insert({
+            user_id: user.id,
+            meeting_id: meetingId,
+            text: chunk,
+            embedding: Array.from(embedding.data),
+            chunk_index: chunkIndex++,
+          });
+
+        console.log("Chunk inserted:", chunkData, chunkError);
+      }
     }
 
-    return NextResponse.json({ meeting: resultMeeting }, { status: 201 });
-  } catch (err: unknown) {
-    console.error("POST /api/meetings error:", err);
-    const msg = err instanceof Error ? err.message : "Internal server error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json(
+      {
+        meeting: resultMeeting,
+      },
+      {
+        status: 201,
+      },
+    );
+  } catch (error) {
+    console.error("POST /api/meetings error:", error);
+
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+
+    return NextResponse.json(
+      {
+        error: message,
+      },
+      {
+        status: 500,
+      },
+    );
   }
 }
