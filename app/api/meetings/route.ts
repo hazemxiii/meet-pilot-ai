@@ -159,14 +159,10 @@ export async function POST(request: Request) {
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
-    // TODO debug
-    // const {
-    //   data: { user },
-    //   error: userError,
-    // } = await getUser(request, supabase);
-
-    const user = { id: "ba21ea18-b44e-43b6-87e1-9f909584621c" };
-    const userError = null;
+    const {
+      data: { user },
+      error: userError,
+    } = await getUser(request, supabase);
 
     if (userError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
