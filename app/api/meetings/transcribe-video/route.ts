@@ -2,6 +2,7 @@ import { transcribeAudioFile } from "@/lib/transcription";
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { pipeline } from "@xenova/transformers";
 import ffmpegPath from "ffmpeg-static";
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
@@ -24,6 +25,21 @@ const SUPPORTED_MIME_TYPES = new Set([
 ]);
 
 const TRANSCRIPT_BUCKET = "files";
+
+function splitIntoChunks(text: string, chunkSize = 500, overlap = 75) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const chunks = [];
+  let start = 0;
+  while (start < words.length) {
+    const end = Math.min(start + chunkSize, words.length);
+    chunks.push(words.slice(start, end).join(" "));
+    if (end === words.length) {
+      break;
+    }
+    start = end - overlap;
+  }
+  return chunks;
+}
 
 class HttpError extends Error {
   status: number;
@@ -322,6 +338,36 @@ export async function POST(request: Request) {
       console.error("Failed to update meeting transcript:", updateMeetingError);
 
       throw new HttpError(500, "Failed to save meeting transcript.");
+    }
+
+    // ========================================
+    // 5.5. Generate chunks and embeddings
+    // ========================================
+
+    const generateEmbedding = await pipeline(
+      "feature-extraction",
+      "Supabase/gte-small",
+    );
+
+    const chunks = splitIntoChunks(transcriptText || "");
+    let chunkIndex = 0;
+    for (const chunk of chunks) {
+      const embedding = await generateEmbedding(chunk, {
+        pooling: "mean",
+        normalize: true,
+      });
+      const { error: chunkError } = await supabase
+        .from("meeting_chunks")
+        .insert({
+          user_id: user.id,
+          meeting_id: meetingId,
+          text: chunk,
+          embedding: Array.from(embedding.data),
+          chunk_index: chunkIndex++,
+        });
+      if (chunkError) {
+        console.error("Chunk insert error:", chunkError);
+      }
     }
 
     // ========================================

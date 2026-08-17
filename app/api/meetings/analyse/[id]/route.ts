@@ -21,6 +21,8 @@ export async function POST(
     .from("meeting_chunks")
     .select("*")
     .eq("meeting_id", id);
+  console.log({chunks, chunksError});
+  
   if (chunksError) {
     return Response.json(
       {

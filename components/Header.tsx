@@ -26,10 +26,12 @@ export default function Header() {
       </div>
 
       <div className="flex items-center gap-4">
+        <Link href="/meetings">
         <Button className="gap-2">
           <Sparkles className="h-4 w-4" />
           Analyze New Meeting
         </Button>
+        </Link>
         <Separator orientation="vertical" className="h-6" />
         <Button variant="ghost" size="icon" className="text-muted-foreground">
           <Bell className="h-5 w-5" />
