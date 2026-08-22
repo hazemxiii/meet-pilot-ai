@@ -35,12 +35,13 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get("file") as File;
     const title = formData.get("title") as string;
-    
+
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const meetingTitle = title && title.trim() ? title.trim() : "Uploaded Meeting Recording";
+    const meetingTitle =
+      title && title.trim() ? title.trim() : "Uploaded Meeting Recording";
     const meetingTime = new Date().toISOString();
 
     // Prepare FormData for the AI API
@@ -61,14 +62,20 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Failed to transcribe via AI API:", errorText);
-      return NextResponse.json({ error: "Transcription failed" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Transcription failed" },
+        { status: 500 },
+      );
     }
 
     const data = await response.json();
     const transcriptText = data.text; // Assuming standard OpenAI API response format { text: "..." }
-    
+
     if (!transcriptText) {
-       return NextResponse.json({ error: "Empty transcription received" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Empty transcription received" },
+        { status: 500 },
+      );
     }
 
     // Insert into meetings table
@@ -111,7 +118,7 @@ export async function POST(request: Request) {
           chunk_index: chunkIndex++,
         });
       if (chunkError) {
-          console.error("Chunk insert error:", chunkError);
+        console.error("Chunk insert error:", chunkError);
       }
     }
 

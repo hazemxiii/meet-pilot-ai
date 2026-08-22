@@ -104,10 +104,12 @@ export default async function Home() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button size="lg" className="gap-2">
-              <Sparkles className="w-4 h-4" />
-              Get Started
-            </Button>
+            <Link href="/meetings/create">
+              <Button size="lg" className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                Get Started
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>

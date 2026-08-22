@@ -217,6 +217,13 @@ export default function MeetingsPage() {
               onChange={handleVideoSelected}
             />
             <Button
+              onClick={() => router.push("/meetings/create")}
+              className="gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              New Meeting
+            </Button>
+            <Button
               onClick={handleUploadClick}
               disabled={isTranscribingVideo}
               className="gap-2"
