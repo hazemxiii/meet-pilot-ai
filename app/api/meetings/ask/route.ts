@@ -57,6 +57,15 @@ export async function POST(request: Request) {
     filter_user_id: user.id,
   });
 
+  const { data: memoryData, error: memoryError } = await supabase
+    .from("memory_items")
+    .select("content")
+    .eq("user_id", user.id);
+
+  const memoryContext = !memoryError && memoryData 
+    ? memoryData.map((item: { content: string }) => item.content).join("\n") 
+    : "";
+
   const url = process.env.AI_BASE_URL + "/student/chat";
 
   const payload = {
@@ -69,7 +78,10 @@ export async function POST(request: Request) {
     ],
     system_prompt: `You are a helpful assistant that answers questions based on the provided context.
     
-    Context:
+    User Memory (Important facts about the user):
+    ${memoryContext ? memoryContext : "No memory available."}
+
+    Context from meetings:
     ${data.map((chunk: { text: string }) => chunk.text).join("\n")}
     
     `,

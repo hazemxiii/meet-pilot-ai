@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 interface DBMeeting {
-  id: number;
+  id: string | number;
   title: string;
   transcript: string;
   time: string;
@@ -33,7 +33,7 @@ interface TranscriptUploadResult {
   fileName: string;
   mimeType: string;
   path: string;
-  meetingId: number | null;
+  meetingId: string | number | null;
 }
 
 export default function MeetingsPage() {
@@ -77,6 +77,19 @@ export default function MeetingsPage() {
     setUploadStage("");
   };
 
+  const upsertMeeting = (meeting: DBMeeting) => {
+    setDbMeetings((prev) => {
+      const next = [meeting, ...prev.filter((item) => item.id !== meeting.id)];
+
+      return next.sort((a, b) => {
+        const aTime = Date.parse(a.time || "") || 0;
+        const bTime = Date.parse(b.time || "") || 0;
+
+        return bTime - aTime;
+      });
+    });
+  };
+
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -118,6 +131,22 @@ export default function MeetingsPage() {
       }
 
       setUploadResult(data.transcript);
+
+      const newMeetingId = data?.meeting?.id ?? data?.transcript?.meetingId;
+
+      if (newMeetingId) {
+        const meetingResponse = await fetch(`/api/meetings/${newMeetingId}`);
+
+        if (meetingResponse.ok) {
+          const meetingData = await meetingResponse.json();
+
+          upsertMeeting(meetingData);
+        } else {
+          await loadDBMeetings();
+        }
+      } else {
+        await loadDBMeetings();
+      }
     } catch (error) {
       setUploadError(
         error instanceof Error ? error.message : "Failed to transcribe video",

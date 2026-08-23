@@ -13,12 +13,7 @@ export const runtime = "nodejs";
 
 const MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024;
 
-const SUPPORTED_EXTENSIONS = new Set([
-  ".mp4",
-  ".webm",
-  ".mov",
-  ".mkv",
-]);
+const SUPPORTED_EXTENSIONS = new Set([".mp4", ".webm", ".mov", ".mkv"]);
 
 const SUPPORTED_MIME_TYPES = new Set([
   "video/mp4",
@@ -39,15 +34,10 @@ class HttpError extends Error {
   }
 }
 
-async function getUser(
-  request: Request,
-  supabase: SupabaseClient,
-) {
+async function getUser(request: Request, supabase: SupabaseClient) {
   const authHeader = request.headers.get("authorization");
 
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : null;
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
   return supabase.auth.getUser(token ?? undefined);
 }
@@ -63,46 +53,33 @@ function isSupportedVideo(file: File) {
 
 async function resolveFfmpegBinary() {
   const candidates = [
-    typeof ffmpegPath === "string"
-      ? ffmpegPath
-      : null,
+    typeof ffmpegPath === "string" ? ffmpegPath : null,
 
     path.join(
       process.cwd(),
       "node_modules",
       "ffmpeg-static",
-      process.platform === "win32"
-        ? "ffmpeg.exe"
-        : "ffmpeg",
+      process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
     ),
-  ].filter(
-    (candidate): candidate is string =>
-      Boolean(candidate),
-  );
+  ].filter((candidate): candidate is string => Boolean(candidate));
 
   for (const candidate of candidates) {
     try {
       await fs.access(candidate);
       return candidate;
     } catch {
-      // Try the next candidate.
+      // Try next candidate.
     }
   }
 
   return null;
 }
 
-async function runFfmpeg(
-  inputPath: string,
-  outputPath: string,
-) {
+async function runFfmpeg(inputPath: string, outputPath: string) {
   const binaryPath = await resolveFfmpegBinary();
 
   if (!binaryPath) {
-    throw new HttpError(
-      500,
-      "FFmpeg is not available on this server.",
-    );
+    throw new HttpError(500, "FFmpeg is not available on this server.");
   }
 
   return new Promise<void>((resolve, reject) => {
@@ -122,81 +99,53 @@ async function runFfmpeg(
 
     let stderr = "";
 
-    processHandle.stderr.on(
-      "data",
-      (chunk) => {
-        stderr += chunk.toString();
-      },
-    );
+    processHandle.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
 
-    processHandle.on(
-      "error",
-      (error) => {
-        console.error(
-          "FFmpeg spawn error:",
-          error,
-        );
+    processHandle.on("error", (error) => {
+      console.error("FFmpeg spawn error:", error);
 
-        reject(
-          new HttpError(
-            422,
-            "Failed to process the uploaded video.",
-          ),
-        );
-      },
-    );
+      reject(new HttpError(422, "Failed to process the uploaded video."));
+    });
 
-    processHandle.on(
-      "close",
-      (code) => {
-        if (code === 0) {
-          resolve();
-          return;
-        }
+    processHandle.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
 
-        console.error(
-          "FFmpeg stderr:",
+      console.error("FFmpeg stderr:", stderr);
+
+      if (
+        /Output file does not contain any stream|Output file #0 does not contain any stream|Stream map '0:a:0'|Stream specifier '0:a:0'|matches no streams/i.test(
           stderr,
-        );
-
-        if (
-          /Output file does not contain any stream|Output file #0 does not contain any stream|Stream map '0:a:0'|Stream specifier '0:a:0'|matches no streams/i.test(
-            stderr,
-          )
-        ) {
-          reject(
-            new HttpError(
-              422,
-              "The uploaded video does not contain an audio track.",
-            ),
-          );
-
-          return;
-        }
-
-        if (
-          /Invalid data found when processing input|moov atom not found|error opening input file|Could not find codec parameters|Decoder .* not found|Error while opening decoder|Invalid argument/i.test(
-            stderr,
-          )
-        ) {
-          reject(
-            new HttpError(
-              422,
-              "The uploaded video is invalid or corrupted.",
-            ),
-          );
-
-          return;
-        }
-
+        )
+      ) {
         reject(
           new HttpError(
             422,
-            "Failed to process the uploaded video.",
+            "The uploaded video does not contain an audio track.",
           ),
         );
-      },
-    );
+
+        return;
+      }
+
+      if (
+        /Invalid data found when processing input|moov atom not found|error opening input file|Could not find codec parameters|Decoder .* not found|Error while opening decoder|Invalid argument/i.test(
+          stderr,
+        )
+      ) {
+        reject(
+          new HttpError(422, "The uploaded video is invalid or corrupted."),
+        );
+
+        return;
+      }
+
+      reject(new HttpError(422, "Failed to process the uploaded video."));
+    });
   });
 }
 
@@ -209,10 +158,7 @@ async function removeStorageObject(
     .remove([storagePath]);
 
   if (error) {
-    console.error(
-      "Failed to remove orphaned transcript file:",
-      error,
-    );
+    console.error("Failed to remove orphaned transcript file:", error);
   }
 }
 
@@ -227,10 +173,7 @@ export async function POST(request: Request) {
   } = await getUser(request, supabase);
 
   if (userError || !user) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 },
-    );
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let tempDir = "";
@@ -240,21 +183,9 @@ export async function POST(request: Request) {
     const formData = await request.formData();
 
     const videoEntry = formData.get("video");
-    const meetingIdEntry =
-      formData.get("meetingId");
 
-    // -----------------------------
-    // Validate video
-    // -----------------------------
-
-    if (
-      !videoEntry ||
-      !(videoEntry instanceof File)
-    ) {
-      throw new HttpError(
-        400,
-        "Missing video file.",
-      );
+    if (!videoEntry || !(videoEntry instanceof File)) {
+      throw new HttpError(400, "Missing video file.");
     }
 
     if (!isSupportedVideo(videoEntry)) {
@@ -264,123 +195,65 @@ export async function POST(request: Request) {
       );
     }
 
-    if (
-      videoEntry.size >
-      MAX_VIDEO_SIZE_BYTES
-    ) {
-      throw new HttpError(
-        413,
-        "Video file is too large.",
-      );
+    if (videoEntry.size > MAX_VIDEO_SIZE_BYTES) {
+      throw new HttpError(413, "Video file is too large.");
     }
 
-    // -----------------------------
-    // Meeting validation
-    // -----------------------------
+    // ========================================
+    // 1. Create Meeting
+    // ========================================
 
-    let meetingId: number | null = null;
+    const now = new Date().toISOString();
 
-    if (
-      typeof meetingIdEntry === "string" &&
-      meetingIdEntry.trim()
-    ) {
-      const parsedMeetingId =
-        Number.parseInt(
-          meetingIdEntry,
-          10,
-        );
+    const { data: meeting, error: meetingError } = await supabase
+      .from("meetings")
+      .insert({
+        user_id: user.id,
+        title: "Uploaded Meeting",
+        transcript: "",
+        time: now,
+        created_at: now,
+        updated_at: now,
+      })
+      .select("id")
+      .single();
 
-      if (
-        !Number.isInteger(
-          parsedMeetingId,
-        ) ||
-        parsedMeetingId <= 0
-      ) {
-        throw new HttpError(
-          400,
-          "Invalid meeting ID.",
-        );
-      }
+    if (meetingError || !meeting) {
+      console.error("Failed to create meeting:", meetingError);
 
-      const {
-        data: meeting,
-        error: meetingError,
-      } = await supabase
-        .from("meetings")
-        .select("id")
-        .eq("id", parsedMeetingId)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (meetingError) {
-        console.error(
-          "Failed to verify meeting ownership:",
-          meetingError,
-        );
-
-        throw new HttpError(
-          500,
-          "Failed to verify meeting.",
-        );
-      }
-
-      if (!meeting) {
-        throw new HttpError(
-          404,
-          "Meeting not found.",
-        );
-      }
-
-      meetingId = parsedMeetingId;
+      throw new HttpError(500, "Failed to create meeting.");
     }
 
-    // -----------------------------
-    // Create temporary directory
-    // -----------------------------
+    const meetingId = meeting.id;
+
+    console.log(`[Meeting] Created meeting: ${meetingId}`);
+
+    // ========================================
+    // 2. Create temp directory
+    // ========================================
 
     tempDir = await fs.mkdtemp(
-      path.join(
-        os.tmpdir(),
-        "meet-pilot-transcribe-",
-      ),
+      path.join(os.tmpdir(), "meet-pilot-transcribe-"),
     );
 
     const inputExtension =
-      path.extname(videoEntry.name)
-        .toLowerCase() || ".mp4";
+      path.extname(videoEntry.name).toLowerCase() || ".mp4";
 
-    const inputPath = path.join(
-      tempDir,
-      `video${inputExtension}`,
-    );
+    const inputPath = path.join(tempDir, `video${inputExtension}`);
 
-    const audioPath = path.join(
-      tempDir,
-      "audio.wav",
-    );
+    const audioPath = path.join(tempDir, "audio.wav");
 
-    await fs.writeFile(
-      inputPath,
-      Buffer.from(
-        await videoEntry.arrayBuffer(),
-      ),
-    );
+    await fs.writeFile(inputPath, Buffer.from(await videoEntry.arrayBuffer()));
 
-    // -----------------------------
-    // Extract audio using FFmpeg
-    // -----------------------------
+    // ========================================
+    // 3. Extract audio
+    // ========================================
 
-    console.log(
-      "[Transcription] Extracting audio...",
-    );
+    console.log("[Transcription] Extracting audio...");
 
-    await runFfmpeg(
-      inputPath,
-      audioPath,
-    );
+    await runFfmpeg(inputPath, audioPath);
 
-    const audioStats =
-      await fs.stat(audioPath);
+    const audioStats = await fs.stat(audioPath);
 
     if (audioStats.size === 0) {
       throw new HttpError(
@@ -389,205 +262,139 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log(
-      `[Transcription] Audio extracted: ${audioStats.size} bytes`,
-    );
+    console.log(`[Transcription] Audio extracted: ${audioStats.size} bytes`);
 
-    // -----------------------------
-    // Transcribe using local Whisper
-    // -----------------------------
+    // ========================================
+    // 4. Whisper transcription
+    // ========================================
 
     let transcriptText: string;
 
     try {
-      transcriptText =
-        await transcribeAudioFile(
-          audioPath,
-        );
+      transcriptText = await transcribeAudioFile(audioPath);
 
-      // Print extracted transcript
-      // in the terminal.
-      console.log(
-        "========== TRANSCRIPT ==========",
-      );
+      console.log("========== TRANSCRIPT ==========");
 
       console.log(transcriptText);
 
-      console.log(
-        "================================",
-      );
+      console.log("================================");
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "";
+      console.error("[Transcription] Error:", error);
 
-      console.error(
-        "[Transcription] Error:",
-        error,
-      );
+      const message = error instanceof Error ? error.message : "";
 
-      if (
-        /Whisper model unavailable/i.test(
-          message,
-        )
-      ) {
-        throw new HttpError(
-          503,
-          "Whisper model is not available right now.",
-        );
+      if (/model|pipeline|load/i.test(message)) {
+        throw new HttpError(503, "Whisper model is not available right now.");
       }
 
-      if (
-        /Empty transcript/i.test(
-          message,
-        )
-      ) {
+      if (/Empty audio|Empty transcript/i.test(message)) {
         throw new HttpError(
           422,
           "The uploaded audio produced an empty transcript.",
         );
       }
 
-      if (
-        /Invalid or corrupted audio/i.test(
-          message,
-        )
-      ) {
-        throw new HttpError(
-          422,
-          "The uploaded audio is invalid or corrupted.",
-        );
+      if (/Invalid audio file|corrupted/i.test(message)) {
+        throw new HttpError(422, "The uploaded audio is invalid or corrupted.");
       }
 
-      if (
-        /Transcription failed/i.test(
-          message,
-        )
-      ) {
-        throw new HttpError(
-          422,
-          "Failed to transcribe the uploaded audio.",
-        );
-      }
-
-      throw error;
+      throw new HttpError(422, "Failed to transcribe the uploaded audio.");
     }
 
     if (!transcriptText.trim()) {
-      throw new HttpError(
-        422,
-        "No transcript was returned.",
-      );
+      throw new HttpError(422, "No transcript was returned.");
     }
 
-    // -----------------------------
-    // Upload transcript to Supabase
-    // -----------------------------
+    // ========================================
+    // 5. Update Meeting with transcript
+    // ========================================
 
-    const uniqueId =
-      crypto.randomUUID();
+    const { error: updateMeetingError } = await supabase
+      .from("meetings")
+      .update({
+        transcript: transcriptText,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", meetingId)
+      .eq("user_id", user.id);
 
-    const scopedMeetingId = meetingId
-      ? String(meetingId)
-      : "unassigned";
+    if (updateMeetingError) {
+      console.error("Failed to update meeting transcript:", updateMeetingError);
 
-    const storagePath =
-      `${user.id}/${scopedMeetingId}/transcript-${uniqueId}.txt`;
+      throw new HttpError(500, "Failed to save meeting transcript.");
+    }
 
-    const transcriptBuffer =
-      Buffer.from(
-        transcriptText,
-        "utf8",
-      );
+    // ========================================
+    // 6. Upload transcript to Storage
+    // ========================================
 
-    console.log(
-      `[Storage] Uploading transcript: ${storagePath}`,
-    );
+    const uniqueId = crypto.randomUUID();
 
-    const {
-      error: uploadError,
-    } = await supabase.storage
+    const storagePath = `${user.id}/${meetingId}/transcript-${uniqueId}.txt`;
+
+    const transcriptBuffer = Buffer.from(transcriptText, "utf8");
+
+    console.log(`[Storage] Uploading transcript: ${storagePath}`);
+
+    const { error: uploadError } = await supabase.storage
       .from(TRANSCRIPT_BUCKET)
-      .upload(
-        storagePath,
-        transcriptBuffer,
-        {
-          contentType: "text/plain",
-          upsert: false,
-        },
-      );
+      .upload(storagePath, transcriptBuffer, {
+        contentType: "text/plain",
+        upsert: false,
+      });
 
     if (uploadError) {
-      console.error(
-        "Transcript upload failed:",
-        uploadError,
-      );
+      console.error("Transcript upload failed:", uploadError);
 
-      throw new HttpError(
-        500,
-        "Failed to save the transcript file.",
-      );
+      throw new HttpError(500, "Failed to save the transcript file.");
     }
 
-    uploadedStoragePath =
-      storagePath;
+    uploadedStoragePath = storagePath;
 
-    // -----------------------------
-    // Save metadata in DB
-    // -----------------------------
+    // ========================================
+    // 7. Save file metadata
+    // ========================================
 
-    const now =
-      new Date().toISOString();
-
-    const {
-      data: fileRecord,
-      error: fileError,
-    } = await supabase
+    const { data: fileRecord, error: fileError } = await supabase
       .from("files")
       .insert({
         meeting_id: meetingId,
         mime_type: "text/plain",
         file_path: storagePath,
-        created_at: now,
-        updated_at: now,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
-      .select(
-        "id, meeting_id, mime_type, file_path",
-      )
+      .select("id, meeting_id, mime_type, file_path")
       .single();
 
-    if (
-      fileError ||
-      !fileRecord
-    ) {
-      console.error(
-        "Transcript metadata insert failed:",
-        fileError,
-      );
+    if (fileError || !fileRecord) {
+      console.error("Transcript metadata insert failed:", fileError);
 
-      throw new HttpError(
-        500,
-        "Failed to save transcript metadata.",
-      );
+      throw new HttpError(500, "Failed to save transcript metadata.");
     }
 
-    // -----------------------------
-    // Success
-    // -----------------------------
+    // ========================================
+    // 8. Success
+    // ========================================
+
+    console.log(`[Success] Transcript saved for meeting ${meetingId}`);
 
     return NextResponse.json(
       {
         success: true,
 
+        meeting: {
+          id: meetingId,
+          title: "Uploaded Meeting",
+        },
+
         transcript: {
           id: fileRecord.id,
           fileName: "transcript.txt",
-          mimeType:
-            fileRecord.mime_type,
+          mimeType: fileRecord.mime_type,
           path: fileRecord.file_path,
-          meetingId:
-            fileRecord.meeting_id,
+          meetingId: fileRecord.meeting_id,
+          text: transcriptText,
         },
       },
       {
@@ -595,13 +402,8 @@ export async function POST(request: Request) {
       },
     );
   } catch (error) {
-    // Remove uploaded transcript
-    // if database insertion failed.
     if (uploadedStoragePath) {
-      await removeStorageObject(
-        supabase,
-        uploadedStoragePath,
-      );
+      await removeStorageObject(supabase, uploadedStoragePath);
     }
 
     if (error instanceof HttpError) {
@@ -615,10 +417,7 @@ export async function POST(request: Request) {
       );
     }
 
-    console.error(
-      "POST /api/meetings/transcribe-video error:",
-      error,
-    );
+    console.error("POST /api/meetings/transcribe-video error:", error);
 
     return NextResponse.json(
       {
@@ -629,7 +428,6 @@ export async function POST(request: Request) {
       },
     );
   } finally {
-    // Remove temporary video/audio files.
     if (tempDir) {
       await fs
         .rm(tempDir, {
