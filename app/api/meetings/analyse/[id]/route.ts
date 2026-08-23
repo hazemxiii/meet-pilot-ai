@@ -2,6 +2,67 @@ import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
+type ChunkForAnalysis = {
+  user_id: string;
+  text: string;
+};
+
+function splitIntoChunks(text: string, chunkSize = 500, overlap = 75) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const chunks: string[] = [];
+
+  let start = 0;
+
+  while (start < words.length) {
+    const end = Math.min(start + chunkSize, words.length);
+
+    chunks.push(words.slice(start, end).join(" "));
+
+    if (end === words.length) {
+      break;
+    }
+
+    start = end - overlap;
+  }
+
+  return chunks;
+}
+
+function transcriptToPlainText(transcript: string) {
+  const trimmed = transcript.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((entry) => {
+          if (typeof entry === "string") {
+            return entry;
+          }
+
+          if (entry && typeof entry === "object" && "text" in entry) {
+            const text = (entry as { text?: unknown }).text;
+
+            return typeof text === "string" ? text : "";
+          }
+
+          return "";
+        })
+        .filter(Boolean)
+        .join(" ");
+    }
+  } catch {
+    // Transcript is plain text.
+  }
+
+  return trimmed;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -21,6 +82,7 @@ export async function POST(
     .from("meeting_chunks")
     .select("*")
     .eq("meeting_id", id);
+
   if (chunksError) {
     return Response.json(
       {
@@ -30,15 +92,13 @@ export async function POST(
       { status: 500 },
     );
   }
-  if (!chunks || chunks.length === 0) {
-    return Response.json(
-      {
-        error: "Failed to analyse meeting no chunks found",
-      },
-      { status: 404 },
-    );
-  }
-  if (chunks.some((chunk) => chunk.user_id !== user.id)) {
+
+  let chunksToAnalyze: ChunkForAnalysis[] = chunks || [];
+
+  if (
+    chunksToAnalyze.length > 0 &&
+    chunksToAnalyze.some((chunk) => chunk.user_id !== user.id)
+  ) {
     return Response.json(
       {
         error:
@@ -47,9 +107,63 @@ export async function POST(
       { status: 403 },
     );
   }
+
+  if (chunksToAnalyze.length === 0) {
+    const { data: meeting, error: meetingError } = await supabase
+      .from("meetings")
+      .select("user_id, transcript")
+      .eq("id", id)
+      .single();
+
+    if (meetingError || !meeting) {
+      return Response.json(
+        {
+          error: "Failed to analyse meeting meeting not found",
+        },
+        { status: 404 },
+      );
+    }
+
+    if (meeting.user_id !== user.id) {
+      return Response.json(
+        {
+          error:
+            "Failed to analyse meeting you are not the owner of this meeting",
+        },
+        { status: 403 },
+      );
+    }
+
+    const transcriptText = transcriptToPlainText(meeting.transcript || "");
+
+    if (!transcriptText) {
+      return Response.json(
+        {
+          error: "Failed to analyse meeting no transcript found",
+        },
+        { status: 422 },
+      );
+    }
+
+    chunksToAnalyze = splitIntoChunks(transcriptText).map((text) => ({
+      user_id: user.id,
+      text,
+    }));
+
+    if (chunksToAnalyze.length === 0) {
+      return Response.json(
+        {
+          error: "Failed to analyse meeting no chunks found",
+        },
+        { status: 422 },
+      );
+    }
+  }
+
   const notes = [];
   const tasks = [];
-  for (const chunk of chunks) {
+
+  for (const chunk of chunksToAnalyze) {
     const url = process.env.AI_BASE_URL + "/student/chat";
 
     const payload = {
@@ -99,18 +213,23 @@ export async function POST(
     if (!response.ok) {
       continue;
     }
+
     const responseData = await response.json();
+
     let jsonParsed;
+
     try {
       jsonParsed = JSON.parse(
         responseData.output_text.replace("```json", "").replace("```", ""),
       );
-    } catch (error) {
+    } catch {
       continue;
     }
-    notes.push(...jsonParsed.notes);
-    tasks.push(...jsonParsed.tasks);
+
+    notes.push(...(Array.isArray(jsonParsed.notes) ? jsonParsed.notes : []));
+    tasks.push(...(Array.isArray(jsonParsed.tasks) ? jsonParsed.tasks : []));
   }
+
   return NextResponse.json({
     notes,
     tasks,
