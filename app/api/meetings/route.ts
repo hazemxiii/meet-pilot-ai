@@ -211,9 +211,9 @@ export async function POST(request: Request) {
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
       }
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("POST /api/meetings error:", err);
-    const msg = err?.message || JSON.stringify(err) || "Internal server error";
+    const msg = err instanceof Error ? err.message : JSON.stringify(err) || "Internal server error";
     return NextResponse.json({ error: msg, details: err }, { 
       status: 500,
       headers: {
@@ -225,7 +225,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function OPTIONS(request: Request) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
     headers: {
