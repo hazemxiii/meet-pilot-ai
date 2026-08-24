@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,13 +20,20 @@ import {
   Sparkles,
   UploadCloud,
   Settings,
-  Plus
+  Plus,
+  File,
+  Loader2,
 } from "lucide-react";
 
 interface NoteFormValues {
   title: string;
   details: string;
   tags: string[];
+}
+
+interface PendingFile {
+  file: File;
+  id: string;
 }
 
 const emptyNoteFormValues: NoteFormValues = {
@@ -37,9 +45,13 @@ const emptyNoteFormValues: NoteFormValues = {
 export default function NewNotePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const supabase = createClient();
   const [formData, setFormData] = useState<NoteFormValues>(emptyNoteFormValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -62,7 +74,14 @@ export default function NewNotePage() {
       });
 
       if (response.ok) {
-        router.push("/notes");
+        const note = await response.json();
+
+        // Upload pending files after note creation
+        if (pendingFiles.length > 0) {
+          await uploadFilesToNote(note.id);
+        }
+
+        router.push(`/notes/${note.id}`);
       } else {
         const error = await response.json();
         alert(error.error || "Failed to create note");
@@ -88,6 +107,52 @@ export default function NewNotePage() {
       ...formData,
       tags: formData.tags.filter((tag) => tag !== tagToRemove),
     });
+  };
+
+  const handleFileSelect = (file: File) => {
+    const id = Math.random().toString(36).substring(7);
+    setPendingFiles([...pendingFiles, { file, id }]);
+  };
+
+  const handleRemovePendingFile = (id: string) => {
+    setPendingFiles(pendingFiles.filter((pf) => pf.id !== id));
+  };
+
+  const uploadFilesToNote = async (noteId: string) => {
+    for (const pendingFile of pendingFiles) {
+      try {
+        const formData = new FormData();
+        formData.append("file", pendingFile.file);
+
+        const response = await fetch(`/api/notes/${noteId}/files`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          console.error(`Failed to upload file: ${pendingFile.file.name}`);
+        }
+      } catch (error) {
+        console.error(`Error uploading file: ${pendingFile.file.name}`, error);
+      }
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      handleFileSelect(droppedFiles[0]);
+    }
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    if (selectedFiles && selectedFiles.length > 0) {
+      handleFileSelect(selectedFiles[0]);
+    }
   };
 
   if (loading) {
@@ -121,10 +186,7 @@ export default function NewNotePage() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              onClick={() => router.push("/notes")}
-            >
+            <Button variant="outline" onClick={() => router.push("/notes")}>
               Discard Changes
             </Button>
             <Button
@@ -154,11 +216,15 @@ export default function NewNotePage() {
                     setFormData({ ...formData, title: e.target.value })
                   }
                 />
-                
+
                 {/* Tag Chip Selector */}
                 <div className="flex flex-wrap items-center gap-2 pt-2">
                   {formData.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="gap-1 px-3 py-1 text-sm">
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="gap-1 px-3 py-1 text-sm"
+                    >
                       {tag}
                       <Button
                         variant="ghost"
@@ -196,25 +262,48 @@ export default function NewNotePage() {
             <Card className="min-h-[600px] flex flex-col relative">
               {/* Editor Toolbar */}
               <div className="flex items-center gap-1 p-2 border-b">
-                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                >
                   <Bold className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                >
                   <Italic className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                >
                   <List className="h-4 w-4" />
                 </Button>
                 <div className="w-[1px] h-6 bg-border mx-2" />
-                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                >
                   <LinkIcon className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                >
                   <Code className="h-4 w-4" />
                 </Button>
-                
+
                 <div className="ml-auto">
-                  <Badge variant="outline" className="gap-1 bg-primary/5 text-primary border-primary/20">
+                  <Badge
+                    variant="outline"
+                    className="gap-1 bg-primary/5 text-primary border-primary/20"
+                  >
                     <Sparkles className="h-3 w-3" />
                     AI Active
                   </Badge>
@@ -249,16 +338,74 @@ export default function NewNotePage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-lg">Attachments</CardTitle>
-                <Badge variant="secondary">0 Files</Badge>
+                <Badge variant="secondary">
+                  {pendingFiles.length} File
+                  {pendingFiles.length !== 1 ? "s" : ""}
+                </Badge>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 {/* Drop Zone */}
-                <div className="border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center gap-3 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors group">
+                <div
+                  className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center gap-3 text-center cursor-pointer transition-colors group ${
+                    isDragging
+                      ? "border-primary bg-primary/10"
+                      : "hover:border-primary hover:bg-primary/5"
+                  }`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  onClick={() => document.getElementById("file-input")?.click()}
+                >
                   <UploadCloud className="h-10 w-10 text-muted-foreground group-hover:text-primary transition-colors" />
                   <p className="text-sm text-muted-foreground group-hover:text-primary transition-colors">
-                    Click or drag to upload additional assets
+                    Click or drag to upload files
                   </p>
+                  <input
+                    id="file-input"
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileInput}
+                  />
                 </div>
+
+                {/* Pending Files List */}
+                {pendingFiles.length > 0 && (
+                  <div className="space-y-2">
+                    {pendingFiles.map((pendingFile) => (
+                      <div
+                        key={pendingFile.id}
+                        className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors group"
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                            <File className="h-5 w-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {pendingFile.file.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {(pendingFile.file.size / 1024).toFixed(1)} KB
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() =>
+                            handleRemovePendingFile(pendingFile.id)
+                          }
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -277,7 +424,7 @@ export default function NewNotePage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between pt-2">
                   <div>
                     <p className="text-xs font-semibold text-primary-foreground/70 uppercase mb-1">
@@ -285,7 +432,11 @@ export default function NewNotePage() {
                     </p>
                     <p className="font-medium text-sm">Internal Team Only</p>
                   </div>
-                  <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground"
+                  >
                     <Settings className="h-5 w-5" />
                   </Button>
                 </div>

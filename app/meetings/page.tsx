@@ -8,6 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
   Video,
   Search,
   RefreshCw,
@@ -19,6 +28,9 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
+  Trash2,
+  Check,
+  X,
 } from "lucide-react";
 
 interface DBMeeting {
@@ -50,6 +62,14 @@ export default function MeetingsPage() {
   const [uploadError, setUploadError] = useState("");
   const [uploadResult, setUploadResult] =
     useState<TranscriptUploadResult | null>(null);
+  const [selectedMeetingIds, setSelectedMeetingIds] = useState<Set<number>>(
+    new Set(),
+  );
+  const [meetingToDelete, setMeetingToDelete] = useState<DBMeeting | null>(
+    null,
+  );
+  const [meetingsToDelete, setMeetingsToDelete] = useState<DBMeeting[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const clearStageTimers = () => {
     stageTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
@@ -175,6 +195,89 @@ export default function MeetingsPage() {
     (m.title || "").toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  const handleDeleteMeeting = async (id: number) => {
+    setIsDeleting(true);
+
+    // Optimistic update: remove the meeting immediately
+    const previousMeetings = dbMeetings;
+    setDbMeetings(dbMeetings.filter((meeting) => meeting.id !== id));
+
+    try {
+      const response = await fetch(`/api/meetings/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        // Roll back on failure
+        setDbMeetings(previousMeetings);
+        console.error("Error deleting meeting:", await response.text());
+      }
+    } catch (error) {
+      // Roll back on network error
+      setDbMeetings(previousMeetings);
+      console.error("Error deleting meeting:", error);
+    } finally {
+      setIsDeleting(false);
+      setMeetingToDelete(null);
+    }
+  };
+
+  const handleBulkDeleteMeetings = async () => {
+    setIsDeleting(true);
+
+    // Optimistic update: remove the meetings immediately
+    const previousMeetings = dbMeetings;
+    const idsToDelete = Array.from(selectedMeetingIds);
+    setDbMeetings(
+      dbMeetings.filter((meeting) => !selectedMeetingIds.has(meeting.id)),
+    );
+
+    try {
+      const response = await fetch(
+        `/api/meetings/bulk?ids=${idsToDelete.join(",")}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!response.ok) {
+        // Roll back on failure
+        setDbMeetings(previousMeetings);
+        console.error("Error deleting meetings:", await response.text());
+      } else {
+        // Clear selection on success
+        setSelectedMeetingIds(new Set());
+      }
+    } catch (error) {
+      // Roll back on network error
+      setDbMeetings(previousMeetings);
+      console.error("Error deleting meetings:", error);
+    } finally {
+      setIsDeleting(false);
+      setMeetingsToDelete([]);
+    }
+  };
+
+  const toggleMeetingSelection = (meetingId: number) => {
+    const newSelection = new Set(selectedMeetingIds);
+    if (newSelection.has(meetingId)) {
+      newSelection.delete(meetingId);
+    } else {
+      newSelection.add(meetingId);
+    }
+    setSelectedMeetingIds(newSelection);
+  };
+
+  const selectAllMeetings = () => {
+    if (selectedMeetingIds.size === filteredMeetings.length) {
+      setSelectedMeetingIds(new Set());
+    } else {
+      setSelectedMeetingIds(
+        new Set(filteredMeetings.map((meeting) => meeting.id)),
+      );
+    }
+  };
+
   if (loading || (isLoading && dbMeetings.length === 0)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -223,7 +326,7 @@ export default function MeetingsPage() {
               <Upload className="h-4 w-4" />
               New Meeting
             </Button>
-            <Button
+            {/* <Button
               onClick={handleUploadClick}
               disabled={isTranscribingVideo}
               className="gap-2"
@@ -232,7 +335,7 @@ export default function MeetingsPage() {
               {isTranscribingVideo
                 ? uploadStage || "Uploading..."
                 : "Upload Video"}
-            </Button>
+            </Button> */}
             <Button
               onClick={loadDBMeetings}
               variant="outline"
@@ -258,6 +361,36 @@ export default function MeetingsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            {selectedMeetingIds.size > 0 && (
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="text-sm text-muted-foreground">
+                  {selectedMeetingIds.size} meeting
+                  {selectedMeetingIds.size !== 1 ? "s" : ""} selected
+                </span>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setMeetingsToDelete(
+                      filteredMeetings.filter((meeting) =>
+                        selectedMeetingIds.has(meeting.id),
+                      ),
+                    );
+                  }}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Selected
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedMeetingIds(new Set())}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -348,74 +481,216 @@ export default function MeetingsPage() {
               </CardContent>
             </Card>
           ) : (
-            filteredMeetings.map((meeting) => {
-              let parsedTranscript: unknown[] = [];
-              try {
-                parsedTranscript = JSON.parse(meeting.transcript);
-              } catch {
-                // Keep empty if invalid JSON
-              }
+            <>
+              {filteredMeetings.length > 0 && (
+                <div className="flex items-center gap-2 mb-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={selectAllMeetings}
+                    className="gap-2"
+                  >
+                    {selectedMeetingIds.size === filteredMeetings.length ? (
+                      <X className="h-4 w-4" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                    {selectedMeetingIds.size === filteredMeetings.length
+                      ? "Deselect All"
+                      : "Select All"}
+                  </Button>
+                </div>
+              )}
+              {filteredMeetings.map((meeting) => {
+                let parsedTranscript: unknown[] = [];
+                try {
+                  parsedTranscript = JSON.parse(meeting.transcript);
+                } catch {
+                  // Keep empty if invalid JSON
+                }
 
-              return (
-                <Card
-                  key={meeting.id}
-                  className="group hover:border-primary/50 transition-all cursor-pointer"
-                  onClick={() => router.push(`/meetings/${meeting.id}`)}
-                >
-                  <CardContent className="p-6 flex items-center justify-between gap-4">
-                    <div className="space-y-2 min-w-0 flex-1">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-semibold text-lg truncate group-hover:text-primary transition-colors">
-                          {meeting.title || "Untitled Meeting"}
-                        </h3>
-                        <Badge variant="secondary" className="gap-1 text-xs">
-                          <Sparkles className="h-3 w-3 text-primary" />
-                          Auto Synced
-                        </Badge>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                        {meeting.time && (
-                          <>
-                            <div className="flex items-center gap-1.5">
-                              <Calendar className="h-4 w-4" />
-                              <span>
-                                {new Date(meeting.time).toLocaleDateString()}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="h-4 w-4" />
-                              <span>
-                                {new Date(meeting.time).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                            </div>
-                          </>
+                return (
+                  <Card
+                    key={meeting.id}
+                    className={`group hover:border-primary/50 transition-all cursor-pointer relative ${
+                      selectedMeetingIds.has(meeting.id)
+                        ? "border-primary ring-2 ring-primary/20"
+                        : ""
+                    }`}
+                    onClick={() => router.push(`/meetings/${meeting.id}`)}
+                  >
+                    <div
+                      className="absolute top-6 left-6 z-10"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div
+                        className={`h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${
+                          selectedMeetingIds.has(meeting.id)
+                            ? "bg-primary border-primary text-primary-foreground"
+                            : "border-muted-foreground bg-background hover:border-primary"
+                        }`}
+                        onClick={() => toggleMeetingSelection(meeting.id)}
+                      >
+                        {selectedMeetingIds.has(meeting.id) && (
+                          <Check className="h-3 w-3" />
                         )}
-                        {parsedTranscript &&
-                          Array.isArray(parsedTranscript) && (
-                            <span className="text-xs bg-muted px-2 py-0.5 rounded">
-                              {parsedTranscript.length} captions
-                            </span>
-                          )}
                       </div>
                     </div>
+                    <CardContent className="p-6 pl-14 flex items-center justify-between gap-4">
+                      <div className="space-y-2 min-w-0 flex-1">
+                        <div className="flex items-center gap-3">
+                          <h3 className="font-semibold text-lg truncate group-hover:text-primary transition-colors">
+                            {meeting.title || "Untitled Meeting"}
+                          </h3>
+                          <Badge variant="secondary" className="gap-1 text-xs">
+                            <Sparkles className="h-3 w-3 text-primary" />
+                            Auto Synced
+                          </Badge>
+                        </div>
 
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="group-hover:translate-x-1 transition-transform"
-                    >
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                          {meeting.time && (
+                            <>
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="h-4 w-4" />
+                                <span>
+                                  {new Date(meeting.time).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <Clock className="h-4 w-4" />
+                                <span>
+                                  {new Date(meeting.time).toLocaleTimeString(
+                                    [],
+                                    {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                          {parsedTranscript &&
+                            Array.isArray(parsedTranscript) && (
+                              <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                                {parsedTranscript.length} captions
+                              </span>
+                            )}
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="group-hover:translate-x-1 transition-transform"
+                      >
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </>
           )}
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog
+          open={!!meetingToDelete}
+          onOpenChange={(open) => {
+            if (!open && !isDeleting) setMeetingToDelete(null);
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Delete meeting</DialogTitle>
+              <DialogDescription>
+                This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+
+            <Alert variant="destructive">
+              <Trash2 />
+              <AlertTitle>
+                Are you sure you want to delete this meeting?
+              </AlertTitle>
+              <AlertDescription>
+                &ldquo;{meetingToDelete?.title || "Untitled Meeting"}&rdquo;
+                will be permanently removed from your recordings.
+              </AlertDescription>
+            </Alert>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setMeetingToDelete(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() =>
+                  meetingToDelete && handleDeleteMeeting(meetingToDelete.id)
+                }
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <Dialog
+          open={meetingsToDelete.length > 0}
+          onOpenChange={(open) => {
+            if (!open && !isDeleting) setMeetingsToDelete([]);
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                Delete {meetingsToDelete.length} meeting
+                {meetingsToDelete.length !== 1 ? "s" : ""}
+              </DialogTitle>
+              <DialogDescription>
+                This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+
+            <Alert variant="destructive">
+              <Trash2 />
+              <AlertTitle>
+                Are you sure you want to delete {meetingsToDelete.length}{" "}
+                meeting{meetingsToDelete.length !== 1 ? "s" : ""}?
+              </AlertTitle>
+              <AlertDescription>
+                {meetingsToDelete.length > 1
+                  ? `${meetingsToDelete.length} meetings will be permanently removed from your recordings.`
+                  : `\"${meetingsToDelete[0]?.title || "Untitled Meeting"}\" will be permanently removed from your recordings.`}
+              </AlertDescription>
+            </Alert>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setMeetingsToDelete([])}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleBulkDeleteMeetings}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

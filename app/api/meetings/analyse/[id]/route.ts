@@ -47,6 +47,18 @@ export async function POST(
       { status: 403 },
     );
   }
+
+  // Fetch user memory items for context
+  const { data: memoryItems, error: memoryError } = await supabase
+    .from("memory_items")
+    .select("content")
+    .eq("user_id", user.id);
+
+  const memoryContext =
+    memoryItems && memoryItems.length > 0
+      ? memoryItems.map((item) => item.content).join("\n")
+      : "No previous memory context available.";
+
   const notes = [];
   const tasks = [];
   for (const chunk of chunks) {
@@ -80,9 +92,13 @@ export async function POST(
 
         make sure to return valid json only that can be parsed with JSON.parse() in typescript directly without any additional formatting or comments
 
-        Context:
+        User Memory Context (previous notes and information):
+        ${memoryContext}
+
+        Current Meeting Chunk to Analyze:
         ${chunk.text}
-        
+
+        Take into account the user's previous memory context when generating notes and tasks from the meeting chunk.
         `,
       max_tokens: 500,
     };
