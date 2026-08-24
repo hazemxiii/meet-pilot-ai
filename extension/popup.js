@@ -1,9 +1,7 @@
 const DB_KEY = 'meetDB';
 
 let currentMeetingId = null;
-let currentSessionId = null;
 let currentSession = null;
-let latestLivePreview = null;
 
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({
@@ -32,7 +30,7 @@ function getMeetingIdFromUrl(url) {
     if (u.hostname !== 'meet.google.com') return null;
     const id = u.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
     return id || null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -48,6 +46,10 @@ function getActiveMeetTab(callback) {
   });
 }
 
+function updateRecBadge(live) {
+  document.getElementById('recBadge').classList.toggle('show', !!live);
+}
+
 function render() {
   const log = document.getElementById('log');
   const meta = document.getElementById('meta');
@@ -55,7 +57,8 @@ function render() {
 
   if (!s) {
     meta.innerHTML = '';
-    log.textContent = 'No captions captured yet. Make sure captions (CC) are turned on in Meet.';
+    log.innerHTML = '<div class="empty">No captions captured yet. Make sure captions (CC) are turned on in Meet.</div>';
+    updateRecBadge(false);
     return;
   }
 
@@ -79,11 +82,10 @@ function render() {
   `;
 
   const hasCommitted = s.transcript && s.transcript.length > 0;
-  const hasLive =
-    latestLivePreview && latestLivePreview.sessionId === currentSessionId && latestLivePreview.text;
 
-  if (!hasCommitted && !hasLive) {
-    log.textContent = 'No captions captured yet. Keep captions (CC) on during the call.';
+  if (!hasCommitted) {
+    log.innerHTML = '<div class="empty">No captions captured yet. Keep captions (CC) on during the call.</div>';
+    updateRecBadge(false);
     return;
   }
 
@@ -95,13 +97,10 @@ function render() {
     log.appendChild(div);
   });
 
-  if (hasLive) {
-    const div = document.createElement('div');
-    div.className = 'line live-line';
-    div.innerHTML = `<span class="speaker">${escapeHtml(latestLivePreview.speaker)}:</span> ${escapeHtml(latestLivePreview.text)}`;
-    log.appendChild(div);
-  }
-
+  // content.js mirrors the in-progress (gray) line straight into the
+  // transcript tail, so there is no separate "pending" line to show here —
+  // the last row already IS the live utterance.
+  updateRecBadge(!s.endedAt);
   log.scrollTop = log.scrollHeight;
 }
 
@@ -112,41 +111,35 @@ async function refresh() {
 
     if (!tab || !getMeetingIdFromUrl(tab.url)) {
       currentMeetingId = null;
-      currentSessionId = null;
       currentSession = null;
-      latestLivePreview = null;
       meta.innerHTML = '';
-      log.textContent = 'Open a Google Meet tab first.';
+      log.innerHTML = '<div class="empty">Open a Google Meet tab first.</div>';
+      updateRecBadge(false);
       return;
     }
 
     currentMeetingId = getMeetingIdFromUrl(tab.url);
 
-    const { [DB_KEY]: db, meetLive } = await chrome.storage.local.get([DB_KEY, 'meetLive']);
+    const { [DB_KEY]: db } = await chrome.storage.local.get(DB_KEY);
     const sessions = (db && db.sessions) || [];
     const session = sessions.find((s) => s.meetingCode === currentMeetingId) || null;
 
     if (!session) {
-      currentSessionId = null;
       currentSession = null;
-      latestLivePreview = null;
       render();
       return;
     }
 
-    currentSessionId = session.sessionId;
     currentSession = session;
-    latestLivePreview =
-      meetLive && meetLive.sessionId === currentSessionId ? meetLive : null;
     render();
   });
 }
 
 // Live-update the transcript while the popup is open: content.js writes
-// everything to `meetDB` and the transient in-progress line to `meetLive`.
+// everything to `meetDB`.
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'local') return;
-  if (changes[DB_KEY] || changes.meetLive) refresh();
+  if (changes[DB_KEY]) refresh();
 });
 
 // Restore the last-selected caption language so the dropdown doesn't
@@ -239,13 +232,14 @@ function refreshSyncStatus() {
   chrome.runtime.sendMessage({ type: 'SYNC_STATUS' }, (res) => {
     if (!res) return;
     updateAuthUI(res);
-    const parts = [
-      res.signedIn ? (res.email ? `as ${res.email}` : 'signed-in ✓') : 'not signed in',
-      `sessions: ${res.sessionCount}`,
-      `live: ${res.live}`,
-      `to-sync: ${res.finalizedUnsynced}`,
-    ];
-    statusEl.textContent = parts.join('  ·  ');
+    const chips = [];
+    chips.push(res.signedIn ? 'signed-in' : 'not signed in');
+    if (res.signedIn && res.email) chips[chips.length - 1] = res.email;
+    chips.push(`${res.sessionCount} sessions`);
+    if (res.live) chips.push(`${res.live} live`);
+    if (res.finalizedUnsynced) chips.push(`${res.finalizedUnsynced} to sync`);
+    statusEl.textContent = chips.join('  ·  ');
+    statusEl.className = 'status-line' + (res.signedIn ? '' : '');
   });
 }
 refreshSyncStatus();
@@ -408,10 +402,12 @@ document.getElementById('startCcBtn').addEventListener('click', () => {
   chrome.storage.local.set({ selectedLangCode: langCode });
   const statusEl = document.getElementById('ccStatus');
   statusEl.textContent = 'Working…';
+  statusEl.className = '';
 
   getActiveMeetTab((tab) => {
     if (!tab) {
       statusEl.textContent = 'Open a Google Meet tab first.';
+      statusEl.className = 'err';
       return;
     }
     chrome.tabs.sendMessage(
@@ -420,16 +416,20 @@ document.getElementById('startCcBtn').addEventListener('click', () => {
       (response) => {
         if (chrome.runtime.lastError) {
           statusEl.textContent = 'Error: ' + chrome.runtime.lastError.message;
+          statusEl.className = 'err';
           return;
         }
         if (!response) {
           statusEl.textContent = 'No response from page.';
+          statusEl.className = 'err';
           return;
         }
         if (response.ok) {
           statusEl.textContent = 'Captions on, language set ✔';
+          statusEl.className = 'ok';
         } else {
           statusEl.textContent = 'Could not finish: ' + (response.reason || 'unknown issue');
+          statusEl.className = 'err';
         }
       }
     );

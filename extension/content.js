@@ -27,8 +27,7 @@ const DB_KEY = 'meetDB';
 const SCHEMA_VERSION = 2;
 
 let transcript = []; // [{speaker, text, time}] for the current session
-let committedTexts = []; // text already committed for each caption line position
-let committedKeys = new Set(); // exact (speaker, text) pairs already captured
+let committedTexts = []; // text already committed for each caption line POSITION (index-based)
 let livePreviewTimer = null; // debounce for the transient meetLive preview
 let liveRowIndex = -1; // transcript index currently holding the in-progress (gray) line
 let currentKnownSpeaker = null; // Meet omits the speaker name on continuation sentences
@@ -89,6 +88,117 @@ function injectHidingStyles() {
   document.head.appendChild(style);
 }
 injectHidingStyles();
+
+// ---- On-page frame: a quiet border + status pill so the extension feels
+// present and working, without touching Meet's own DOM/styles. Lives in a
+// shadow root so Meet's CSS can never bleed in (or vice versa).
+let frameEls = null;
+
+function injectCaptureFrame() {
+  if (document.getElementById('mcc-frame-host')) return;
+
+  const host = document.createElement('div');
+  host.id = 'mcc-frame-host';
+  document.documentElement.appendChild(host);
+  const root = host.attachShadow({ mode: 'open' });
+
+  root.innerHTML = `
+    <style>
+      :host { all: initial; }
+      .frame {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        pointer-events: none;
+        border: 2px solid rgba(26, 115, 232, 0);
+        box-shadow: inset 0 0 0 rgba(26, 115, 232, 0);
+        transition: border-color 600ms ease, box-shadow 600ms ease;
+      }
+      .frame.on {
+        border-color: rgba(26, 115, 232, 0.55);
+        box-shadow: inset 0 0 28px rgba(26, 115, 232, 0.16);
+      }
+      .pill {
+        position: fixed;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2147483001;
+        pointer-events: auto;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 6px 14px 6px 10px;
+        border-radius: 999px;
+        background: rgba(32, 33, 36, 0.82);
+        backdrop-filter: blur(6px);
+        color: #fff;
+        font: 500 12px/1.3 "Google Sans", Roboto, Arial, sans-serif;
+        letter-spacing: 0.1px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+        opacity: 0;
+        transition: opacity 400ms ease, transform 400ms ease;
+      }
+      .pill.show { opacity: 1; }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #9aa0a6;
+        flex: none;
+      }
+      .dot.live {
+        background: #ea4335;
+        box-shadow: 0 0 0 rgba(234, 67, 53, 0.5);
+        animation: mcc-pulse 1.6s ease-out infinite;
+      }
+      .dot.waiting { background: #fbbc04; }
+      @keyframes mcc-pulse {
+        0%   { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.55); }
+        70%  { box-shadow: 0 0 0 7px rgba(234, 67, 53, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0); }
+      }
+      .label { white-space: nowrap; }
+      .sub { color: rgba(255,255,255,0.65); font-weight: 400; }
+    </style>
+    <div class="frame" id="frame"></div>
+    <div class="pill" id="pill">
+      <span class="dot waiting" id="dot"></span>
+      <span class="label"><span id="labelMain">Meet Transcript</span> <span class="sub" id="labelSub"></span></span>
+    </div>
+  `;
+
+  frameEls = {
+    frame: root.getElementById('frame'),
+    pill: root.getElementById('pill'),
+    dot: root.getElementById('dot'),
+    labelMain: root.getElementById('labelMain'),
+    labelSub: root.getElementById('labelSub'),
+  };
+
+  requestAnimationFrame(() => frameEls.pill.classList.add('show'));
+}
+
+// status: 'waiting' | 'capturing' | 'off' ; detail: short trailing text
+function setFrameStatus(status, detail) {
+  if (!frameEls) return;
+  const { frame, dot, labelMain, labelSub } = frameEls;
+  frame.classList.toggle('on', status === 'capturing');
+  dot.classList.remove('live', 'waiting');
+  if (status === 'capturing') {
+    dot.classList.add('live');
+    labelMain.textContent = 'Capturing captions';
+  } else if (status === 'waiting') {
+    dot.classList.add('waiting');
+    labelMain.textContent = 'Meet Transcript';
+  } else {
+    labelMain.textContent = 'Captions off';
+  }
+  labelSub.textContent = detail || '';
+}
+
+injectCaptureFrame();
+setFrameStatus('waiting', 'waiting for captions…');
 
 // ---- Unified storage: meetDB ----
 
@@ -184,9 +294,6 @@ window.addEventListener('pagehide', () => finalizeSession());
 
 function commitFinal(speaker, text) {
   if (!text) return;
-  const key = `${speaker}\u0000${text}`;
-  if (committedKeys.has(key)) return; // exact duplicate of a line we already captured
-  committedKeys.add(key);
 
   const last = transcript[transcript.length - 1];
 
@@ -238,22 +345,33 @@ function pushLivePreview(speaker, text) {
 function mirrorLiveTail(di, speaker, text) {
   if (!text) return false;
   const last = transcript[transcript.length - 1];
+  let changed = false;
 
   if (liveRowIndex === di && last && last.speaker === speaker) {
     // Same in-progress line growing / being corrected — update in place.
-    if (last.text === text) return false;
-    last.text = text;
-    last.time = new Date().toISOString();
-    return true;
+    if (last.text !== text) {
+      last.text = text;
+      last.time = new Date().toISOString();
+      changed = true;
+    }
+  } else if (!(last && last.speaker === speaker && last.text === text)) {
+    // A new gray line (or a speaker change on the live row): the previous
+    // tail row is now finalized — start a fresh row for the new utterance.
+    transcript.push({ speaker, text, time: new Date().toISOString() });
+    liveRowIndex = di;
+    addSpeaker(speaker);
+    changed = true;
   }
 
-  // A new gray line (or a speaker change on the live row): the previous
-  // tail row is now finalized — start a fresh row for the new utterance.
-  if (last && last.speaker === speaker && last.text === text) return false;
-  transcript.push({ speaker, text, time: new Date().toISOString() });
-  liveRowIndex = di;
-  addSpeaker(speaker);
-  return true;
+  // Keep committedTexts in sync for this position. Without this, once the
+  // line stops being the "last" line (a new one starts) and reconcileLine()
+  // sees it as a normal settled row, committedTexts[di] would still be
+  // undefined — reconcileLine would treat the already-saved text as brand
+  // new and commit it a SECOND time as a duplicate row. Recording it here
+  // means the transition from live -> settled sees text === prev (or a
+  // small delta) and behaves exactly like any other settled line.
+  committedTexts[di] = text;
+  return changed;
 }
 
 // Periodically re-read the gray line and mirror it, so even if the
@@ -429,7 +547,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'CLEAR_TRANSCRIPT') {
     transcript = [];
     committedTexts = [];
-    committedKeys = new Set();
     currentKnownSpeaker = null;
     speakers = [];
     liveRowIndex = -1;

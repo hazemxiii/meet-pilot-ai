@@ -4,13 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useEffect } from "react";
-import {
-  CheckCircle2,
-  FileText,
-  BrainCircuit,
-  Video,
-  Sparkles,
-} from "lucide-react";
+import { CheckCircle2, FileText, BrainCircuit, Video, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Sidebar() {
@@ -21,7 +15,6 @@ export default function Sidebar() {
     { path: "/meetings", label: "Meetings", icon: Video },
     { path: "/tasks", label: "Tasks", icon: CheckCircle2 },
     { path: "/notes", label: "Notes", icon: FileText },
-    { path: "/ask", label: "Ask", icon: Sparkles },
     { path: "/memory", label: "Memory", icon: BrainCircuit },
   ];
 
@@ -45,7 +38,7 @@ export default function Sidebar() {
         className={cn(
           "fixed left-0 top-0 h-full w-64 bg-background border-r flex flex-col z-50 transform transition-transform duration-300 ease-in-out",
           isMobileOpen ? "translate-x-0" : "-translate-x-full",
-          "min-[800px]:translate-x-0",
+          "min-[800px]:translate-x-0"
         )}
       >
         <div className="p-6 flex items-center gap-3">
@@ -69,7 +62,7 @@ export default function Sidebar() {
                   "flex items-center px-4 py-3 rounded-md transition-colors text-sm font-medium",
                   isActive
                     ? "bg-secondary text-secondary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
                 <Icon className="mr-3 h-5 w-5" />
@@ -78,6 +71,7 @@ export default function Sidebar() {
             );
           })}
         </nav>
+
       </aside>
     </>
   );

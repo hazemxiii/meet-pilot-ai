@@ -7,22 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Search, Plus, MoreVertical, FilePlus2, Trash2 } from "lucide-react";
+import { FileText, Search, Plus, MoreVertical, FilePlus2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface Note {
   id: string;
@@ -49,8 +40,6 @@ export default function NotesPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchNotes = async (query = searchQuery) => {
     try {
@@ -111,29 +100,18 @@ export default function NotesPage() {
   };
 
   const handleDeleteNote = async (id: string) => {
-    setIsDeleting(true);
-
-    // Optimistic update: remove the note immediately
-    const previousNotes = notes;
-    setNotes(notes.filter((note) => note.id !== id));
+    if (!confirm("Are you sure you want to delete this note?")) return;
 
     try {
       const response = await fetch(`/api/notes/${id}`, {
         method: "DELETE",
       });
 
-      if (!response.ok) {
-        // Roll back on failure
-        setNotes(previousNotes);
-        console.error("Error deleting note:", await response.text());
+      if (response.ok) {
+        setNotes(notes.filter((note) => note.id !== id));
       }
     } catch (error) {
-      // Roll back on network error
-      setNotes(previousNotes);
       console.error("Error deleting note:", error);
-    } finally {
-      setIsDeleting(false);
-      setNoteToDelete(null);
     }
   };
 
@@ -242,7 +220,7 @@ export default function NotesPage() {
                           className="text-destructive focus:text-destructive"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setNoteToDelete(note);
+                            handleDeleteNote(note.id);
                           }}
                         >
                           Delete note
@@ -281,49 +259,6 @@ export default function NotesPage() {
           )}
         </div>
       </div>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={!!noteToDelete}
-        onOpenChange={(open) => {
-          if (!open && !isDeleting) setNoteToDelete(null);
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete note</DialogTitle>
-            <DialogDescription>
-              This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-
-          <Alert variant="destructive">
-            <Trash2 />
-            <AlertTitle>Are you sure you want to delete this note?</AlertTitle>
-            <AlertDescription>
-              &ldquo;{noteToDelete?.title}&rdquo; will be permanently removed
-              from your knowledge base.
-            </AlertDescription>
-          </Alert>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setNoteToDelete(null)}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => noteToDelete && handleDeleteNote(noteToDelete.id)}
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
