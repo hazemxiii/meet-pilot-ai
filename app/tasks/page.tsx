@@ -8,8 +8,24 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, Search, Plus, CalendarIcon, Clock, Eye, Edit2, Trash2, AlertCircle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  CheckCircle2,
+  Search,
+  Plus,
+  CalendarIcon,
+  Clock,
+  Eye,
+  Edit2,
+  Trash2,
+  AlertCircle,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -80,7 +96,14 @@ export default function TasksPage() {
         setIsLoading(false);
       }
     })();
-  }, [user, pagination.page, pagination.limit, doneFilter, searchQuery, refreshKey]);
+  }, [
+    user,
+    pagination.page,
+    pagination.limit,
+    doneFilter,
+    searchQuery,
+    refreshKey,
+  ]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,7 +279,10 @@ export default function TasksPage() {
 
         {/* Filter Bar */}
         <div className="flex items-center gap-4">
-          <Select value={doneFilter} onValueChange={(val) => setDoneFilter(val || "all")}>
+          <Select
+            value={doneFilter}
+            onValueChange={(val) => setDoneFilter(val || "all")}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="All Tasks" />
             </SelectTrigger>
@@ -293,7 +319,7 @@ export default function TasksPage() {
                 key={task.id}
                 className={cn(
                   "transition-all duration-200 hover:shadow-md",
-                  task.done && "bg-muted/30"
+                  task.done && "bg-muted/30",
                 )}
               >
                 <CardContent className="p-4 flex items-start gap-4">
@@ -307,7 +333,7 @@ export default function TasksPage() {
                       <h3
                         className={cn(
                           "font-semibold text-lg cursor-pointer hover:text-primary transition-colors",
-                          task.done && "line-through text-muted-foreground"
+                          task.done && "line-through text-muted-foreground",
                         )}
                         onClick={() => router.push(`/tasks/${task.id}`)}
                       >
@@ -320,7 +346,10 @@ export default function TasksPage() {
                       )}
                       <div className="flex flex-wrap items-center gap-3">
                         {task.deadline && (
-                          <Badge variant="secondary" className="gap-1 font-normal">
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 font-normal"
+                          >
                             <CalendarIcon className="h-3.5 w-3.5" />
                             {new Date(task.deadline).toLocaleDateString()}
                           </Badge>

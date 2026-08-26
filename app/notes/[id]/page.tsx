@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +21,10 @@ import {
   Sparkles,
   UploadCloud,
   Settings,
-  Plus
+  Plus,
+  File,
+  Download,
+  Loader2,
 } from "lucide-react";
 
 interface Note {
@@ -30,6 +34,16 @@ interface Note {
   created_at: string;
   updated_at: string;
   tags?: { id: string; name: string }[];
+}
+
+interface NoteFile {
+  id: string;
+  note_id: string;
+  mime_type: string;
+  file_path: string;
+  created_at: string;
+  updated_at: string;
+  public_url?: string;
 }
 
 interface NoteFormValues {
@@ -45,6 +59,7 @@ export default function NoteDetailPage({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const supabase = createClient();
   const [note, setNote] = useState<Note | null>(null);
   const [formData, setFormData] = useState<NoteFormValues>({
     title: "",
@@ -54,7 +69,29 @@ export default function NoteDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [files, setFiles] = useState<NoteFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const resolvedParams = use(params);
+
+  const fetchFiles = async () => {
+    try {
+      const response = await fetch(`/api/notes/${resolvedParams.id}/files`);
+      if (response.ok) {
+        const data = await response.json();
+        // Add public URLs to files
+        const filesWithUrls = data.map((file: NoteFile) => {
+          const { data } = supabase.storage
+            .from("files")
+            .getPublicUrl(file.file_path);
+          return { ...file, public_url: data.publicUrl };
+        });
+        setFiles(filesWithUrls);
+      }
+    } catch (error) {
+      console.error("Error fetching files:", error);
+    }
+  };
 
   useEffect(() => {
     if (!user || !resolvedParams.id) return;
@@ -82,6 +119,7 @@ export default function NoteDetailPage({
     };
 
     fetchNote();
+    fetchFiles();
 
     return () => {
       isMounted = false;
@@ -156,6 +194,71 @@ export default function NoteDetailPage({
     });
   };
 
+  const handleFileUpload = async (file: File) => {
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`/api/notes/${resolvedParams.id}/files`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        const newFile = await response.json();
+        setFiles([newFile, ...files]);
+      } else {
+        const error = await response.json();
+        alert(error.error || "Failed to upload file");
+      }
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      alert("Failed to upload file");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteFile = async (fileId: string) => {
+    if (!confirm("Are you sure you want to delete this file?")) return;
+
+    try {
+      const response = await fetch(
+        `/api/notes/${resolvedParams.id}/files/${fileId}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (response.ok) {
+        setFiles(files.filter((file) => file.id !== fileId));
+      } else {
+        alert("Failed to delete file");
+      }
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      alert("Failed to delete file");
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      handleFileUpload(droppedFiles[0]);
+    }
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    if (selectedFiles && selectedFiles.length > 0) {
+      handleFileUpload(selectedFiles[0]);
+    }
+  };
+
   if (loading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -182,17 +285,18 @@ export default function NoteDetailPage({
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Created: {new Date(note.created_at).toLocaleString()}</span>
+                <span>
+                  Created: {new Date(note.created_at).toLocaleString()}
+                </span>
                 <span className="w-1 h-1 rounded-full bg-border" />
-                <span>Last Edited: {new Date(note.updated_at).toLocaleString()}</span>
+                <span>
+                  Last Edited: {new Date(note.updated_at).toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              onClick={() => router.push("/notes")}
-            >
+            <Button variant="outline" onClick={() => router.push("/notes")}>
               Discard Changes
             </Button>
             <Button
@@ -203,11 +307,7 @@ export default function NoteDetailPage({
               <Trash2 className="h-4 w-4" />
               Delete
             </Button>
-            <Button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="gap-2"
-            >
+            <Button onClick={handleSave} disabled={isSaving} className="gap-2">
               <Save className="h-4 w-4" />
               {isSaving ? "Saving..." : "Save Note"}
             </Button>
@@ -230,11 +330,15 @@ export default function NoteDetailPage({
                     setFormData({ ...formData, title: e.target.value })
                   }
                 />
-                
+
                 {/* Tag Chip Selector */}
                 <div className="flex flex-wrap items-center gap-2 pt-2">
                   {formData.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="gap-1 px-3 py-1 text-sm">
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="gap-1 px-3 py-1 text-sm"
+                    >
                       {tag}
                       <Button
                         variant="ghost"
@@ -272,25 +376,48 @@ export default function NoteDetailPage({
             <Card className="min-h-[600px] flex flex-col relative">
               {/* Editor Toolbar */}
               <div className="flex items-center gap-1 p-2 border-b">
-                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                >
                   <Bold className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                >
                   <Italic className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                >
                   <List className="h-4 w-4" />
                 </Button>
                 <div className="w-[1px] h-6 bg-border mx-2" />
-                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                >
                   <LinkIcon className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                >
                   <Code className="h-4 w-4" />
                 </Button>
-                
+
                 <div className="ml-auto">
-                  <Badge variant="outline" className="gap-1 bg-primary/5 text-primary border-primary/20">
+                  <Badge
+                    variant="outline"
+                    className="gap-1 bg-primary/5 text-primary border-primary/20"
+                  >
                     <Sparkles className="h-3 w-3" />
                     AI Active
                   </Badge>
@@ -325,16 +452,89 @@ export default function NoteDetailPage({
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-lg">Attachments</CardTitle>
-                <Badge variant="secondary">0 Files</Badge>
+                <Badge variant="secondary">
+                  {files.length} File{files.length !== 1 ? "s" : ""}
+                </Badge>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 {/* Drop Zone */}
-                <div className="border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center gap-3 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors group">
-                  <UploadCloud className="h-10 w-10 text-muted-foreground group-hover:text-primary transition-colors" />
+                <div
+                  className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center gap-3 text-center cursor-pointer transition-colors group ${
+                    isDragging
+                      ? "border-primary bg-primary/10"
+                      : "hover:border-primary hover:bg-primary/5"
+                  }`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  onClick={() => document.getElementById("file-input")?.click()}
+                >
+                  {isUploading ? (
+                    <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                  ) : (
+                    <UploadCloud className="h-10 w-10 text-muted-foreground group-hover:text-primary transition-colors" />
+                  )}
                   <p className="text-sm text-muted-foreground group-hover:text-primary transition-colors">
-                    Click or drag to upload additional assets
+                    {isUploading
+                      ? "Uploading..."
+                      : "Click or drag to upload files"}
                   </p>
+                  <input
+                    id="file-input"
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileInput}
+                  />
                 </div>
+
+                {/* Files List */}
+                {files.length > 0 && (
+                  <div className="space-y-2">
+                    {files.map((file) => (
+                      <div
+                        key={file.id}
+                        className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors group"
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                            <File className="h-5 w-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {file.file_path.split("/").pop()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(file.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() =>
+                              window.open(file.public_url, "_blank")
+                            }
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteFile(file.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -353,7 +553,7 @@ export default function NoteDetailPage({
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between pt-2">
                   <div>
                     <p className="text-xs font-semibold text-primary-foreground/70 uppercase mb-1">
@@ -361,7 +561,11 @@ export default function NoteDetailPage({
                     </p>
                     <p className="font-medium text-sm">Internal Team Only</p>
                   </div>
-                  <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground"
+                  >
                     <Settings className="h-5 w-5" />
                   </Button>
                 </div>

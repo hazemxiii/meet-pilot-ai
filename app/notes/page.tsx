@@ -7,13 +7,31 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Search, Plus, MoreVertical, FilePlus2 } from "lucide-react";
+import {
+  FileText,
+  Search,
+  Plus,
+  MoreVertical,
+  FilePlus2,
+  Trash2,
+  Check,
+  X,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface Note {
   id: string;
@@ -40,6 +58,12 @@ export default function NotesPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
+  const [notesToDelete, setNotesToDelete] = useState<Note[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   const fetchNotes = async (query = searchQuery) => {
     try {
@@ -100,18 +124,81 @@ export default function NotesPage() {
   };
 
   const handleDeleteNote = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this note?")) return;
+    setIsDeleting(true);
+
+    // Optimistic update: remove the note immediately
+    const previousNotes = notes;
+    setNotes(notes.filter((note) => note.id !== id));
 
     try {
       const response = await fetch(`/api/notes/${id}`, {
         method: "DELETE",
       });
 
-      if (response.ok) {
-        setNotes(notes.filter((note) => note.id !== id));
+      if (!response.ok) {
+        // Roll back on failure
+        setNotes(previousNotes);
+        console.error("Error deleting note:", await response.text());
       }
     } catch (error) {
+      // Roll back on network error
+      setNotes(previousNotes);
       console.error("Error deleting note:", error);
+    } finally {
+      setIsDeleting(false);
+      setNoteToDelete(null);
+    }
+  };
+
+  const handleBulkDeleteNotes = async () => {
+    setIsDeleting(true);
+
+    // Optimistic update: remove the notes immediately
+    const previousNotes = notes;
+    const idsToDelete = Array.from(selectedNoteIds);
+    setNotes(notes.filter((note) => !selectedNoteIds.has(note.id)));
+
+    try {
+      const response = await fetch(
+        `/api/notes/bulk?ids=${idsToDelete.join(",")}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!response.ok) {
+        // Roll back on failure
+        setNotes(previousNotes);
+        console.error("Error deleting notes:", await response.text());
+      } else {
+        // Clear selection on success
+        setSelectedNoteIds(new Set());
+      }
+    } catch (error) {
+      // Roll back on network error
+      setNotes(previousNotes);
+      console.error("Error deleting notes:", error);
+    } finally {
+      setIsDeleting(false);
+      setNotesToDelete([]);
+    }
+  };
+
+  const toggleNoteSelection = (noteId: string) => {
+    const newSelection = new Set(selectedNoteIds);
+    if (newSelection.has(noteId)) {
+      newSelection.delete(noteId);
+    } else {
+      newSelection.add(noteId);
+    }
+    setSelectedNoteIds(newSelection);
+  };
+
+  const selectAllNotes = () => {
+    if (selectedNoteIds.size === notes.length) {
+      setSelectedNoteIds(new Set());
+    } else {
+      setSelectedNoteIds(new Set(notes.map((note) => note.id)));
     }
   };
 
@@ -143,7 +230,8 @@ export default function NotesPage() {
               Notes & <span className="text-primary">Intelligence</span>
             </h1>
             <p className="text-muted-foreground text-lg">
-              Your centralized repository of AI-distilled insights, project documentation, and meeting transcripts.
+              Your centralized repository of AI-distilled insights, project
+              documentation, and meeting transcripts.
             </p>
           </div>
           <Button
@@ -170,9 +258,41 @@ export default function NotesPage() {
               />
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
-              <Button variant="default" className="flex-1 sm:flex-none">All Notes</Button>
-              <Button variant="outline" className="flex-1 sm:flex-none">Recent</Button>
+              <Button variant="default" className="flex-1 sm:flex-none">
+                All Notes
+              </Button>
+              <Button variant="outline" className="flex-1 sm:flex-none">
+                Recent
+              </Button>
             </div>
+            {selectedNoteIds.size > 0 && (
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="text-sm text-muted-foreground">
+                  {selectedNoteIds.size} note
+                  {selectedNoteIds.size !== 1 ? "s" : ""} selected
+                </span>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setNotesToDelete(
+                      notes.filter((note) => selectedNoteIds.has(note.id)),
+                    );
+                  }}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Selected
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedNoteIds(new Set())}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -187,78 +307,217 @@ export default function NotesPage() {
                 <div className="space-y-2 max-w-sm">
                   <h3 className="text-xl font-semibold">No notes found</h3>
                   <p className="text-muted-foreground">
-                    We couldn&apos;t find any notes matching your search criteria. Try a different keyword or create a new one.
+                    We couldn&apos;t find any notes matching your search
+                    criteria. Try a different keyword or create a new one.
                   </p>
                 </div>
-                <Button onClick={() => router.push("/notes/new")} className="gap-2">
+                <Button
+                  onClick={() => router.push("/notes/new")}
+                  className="gap-2"
+                >
                   <Plus className="h-4 w-4" />
                   Create New Note
                 </Button>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {notes.map((note) => (
-                <Card
-                  key={note.id}
-                  className="group flex flex-col h-full hover:border-primary/50 transition-colors cursor-pointer"
-                  onClick={() => router.push(`/notes/${note.id}`)}
-                >
-                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        className="h-8 w-8 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-muted-foreground opacity-0 group-hover:opacity-100"
-                        onClick={(e) => e.stopPropagation()}
+            <>
+              {notes.length > 0 && (
+                <div className="flex items-center gap-2 mb-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={selectAllNotes}
+                    className="gap-2"
+                  >
+                    {selectedNoteIds.size === notes.length ? (
+                      <X className="h-4 w-4" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                    {selectedNoteIds.size === notes.length
+                      ? "Deselect All"
+                      : "Select All"}
+                  </Button>
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {notes.map((note) => (
+                  <Card
+                    key={note.id}
+                    className={`group flex flex-col h-full hover:border-primary/50 transition-colors cursor-pointer relative ${
+                      selectedNoteIds.has(note.id)
+                        ? "border-primary ring-2 ring-primary/20"
+                        : ""
+                    }`}
+                    onClick={() => router.push(`/notes/${note.id}`)}
+                  >
+                    <div
+                      className="absolute top-3 left-3 z-10"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div
+                        className={`h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${
+                          selectedNoteIds.has(note.id)
+                            ? "bg-primary border-primary text-primary-foreground"
+                            : "border-muted-foreground bg-background hover:border-primary"
+                        }`}
+                        onClick={() => toggleNoteSelection(note.id)}
                       >
-                        <MoreVertical className="h-4 w-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteNote(note.id);
-                          }}
-                        >
-                          Delete note
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </CardHeader>
-                  <CardContent className="flex flex-col flex-1 pb-4">
-                    <CardTitle className="mb-2 text-xl group-hover:text-primary transition-colors line-clamp-2">
-                      {note.title}
-                    </CardTitle>
-                    <p className="text-muted-foreground text-sm line-clamp-4 mb-4 flex-1">
-                      {note.details}
-                    </p>
-                    <div className="flex items-center justify-between mt-auto pt-4 border-t">
-                      <div className="flex flex-wrap gap-1">
-                        {note.tags?.slice(0, 3).map((tag) => (
-                          <Badge key={tag.id} variant="secondary" className="text-xs">
-                            #{tag.name}
-                          </Badge>
-                        ))}
-                        {(note.tags?.length || 0) > 3 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{note.tags!.length - 3}
-                          </Badge>
+                        {selectedNoteIds.has(note.id) && (
+                          <Check className="h-3 w-3" />
                         )}
                       </div>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
-                        {new Date(note.updated_at).toLocaleDateString()}
-                      </span>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pl-10">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          className="h-8 w-8 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-muted-foreground opacity-0 group-hover:opacity-100"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNoteToDelete(note);
+                            }}
+                          >
+                            Delete note
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </CardHeader>
+                    <CardContent className="flex flex-col flex-1 pb-4">
+                      <CardTitle className="mb-2 text-xl group-hover:text-primary transition-colors line-clamp-2">
+                        {note.title}
+                      </CardTitle>
+                      <p className="text-muted-foreground text-sm line-clamp-4 mb-4 flex-1">
+                        {note.details}
+                      </p>
+                      <div className="flex items-center justify-between mt-auto pt-4 border-t">
+                        <div className="flex flex-wrap gap-1">
+                          {note.tags?.slice(0, 3).map((tag) => (
+                            <Badge
+                              key={tag.id}
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              #{tag.name}
+                            </Badge>
+                          ))}
+                          {(note.tags?.length || 0) > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{note.tags!.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
+                          {new Date(note.updated_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={!!noteToDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setNoteToDelete(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete note</DialogTitle>
+            <DialogDescription>This action cannot be undone.</DialogDescription>
+          </DialogHeader>
+
+          <Alert variant="destructive">
+            <Trash2 />
+            <AlertTitle>Are you sure you want to delete this note?</AlertTitle>
+            <AlertDescription>
+              &ldquo;{noteToDelete?.title}&rdquo; will be permanently removed
+              from your knowledge base.
+            </AlertDescription>
+          </Alert>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setNoteToDelete(null)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => noteToDelete && handleDeleteNote(noteToDelete.id)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <Dialog
+        open={notesToDelete.length > 0}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setNotesToDelete([]);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Delete {notesToDelete.length} note
+              {notesToDelete.length !== 1 ? "s" : ""}
+            </DialogTitle>
+            <DialogDescription>This action cannot be undone.</DialogDescription>
+          </DialogHeader>
+
+          <Alert variant="destructive">
+            <Trash2 />
+            <AlertTitle>
+              Are you sure you want to delete {notesToDelete.length} note
+              {notesToDelete.length !== 1 ? "s" : ""}?
+            </AlertTitle>
+            <AlertDescription>
+              {notesToDelete.length > 1
+                ? `${notesToDelete.length} notes will be permanently removed from your knowledge base.`
+                : `"${notesToDelete[0]?.title}" will be permanently removed from your knowledge base.`}
+            </AlertDescription>
+          </Alert>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setNotesToDelete([])}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDeleteNotes}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
