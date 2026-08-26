@@ -117,13 +117,27 @@ export async function POST(
     }
     const responseData = await response.json();
     let jsonParsed;
-    try {
-      jsonParsed = JSON.parse(
-        responseData.output_text.replace("```json", "").replace("```", ""),
-      );
-    } catch (error) {
+    let parseSuccess = false;
+    const maxRetries = 3;
+
+    for (let retryCount = 0; retryCount < maxRetries; retryCount++) {
+      try {
+        jsonParsed = JSON.parse(
+          responseData.output_text.replace("```json", "").replace("```", ""),
+        );
+        parseSuccess = true;
+        break;
+      } catch (error) {
+        if (retryCount === maxRetries - 1) {
+          continue;
+        }
+      }
+    }
+
+    if (!parseSuccess) {
       continue;
     }
+
     notes.push(...jsonParsed.notes);
     tasks.push(...jsonParsed.tasks);
   }
