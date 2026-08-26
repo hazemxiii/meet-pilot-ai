@@ -1,5 +1,0 @@
-allowBuilds:
-  ffmpeg-static: false
-  protobufjs: true
-  sharp: true
-  unrs-resolver: true

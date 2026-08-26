@@ -53,12 +53,15 @@ CREATE TABLE "note_tags" (
 CREATE TABLE "meetings" (
   "id" integer PRIMARY KEY,
   "user_id" integer NOT NULL,
+  "external_id" text,
   "title" text DEFAULT '',
   "transcript" text DEFAULT '',
   "time" timestamp,
   "created_at" timestamp NOT NULL,
   "updated_at" timestamp NOT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS "meetings_user_external_key" ON "meetings" ("user_id", "external_id");
 
 CREATE TABLE "files" (
   "id" integer PRIMARY KEY,
